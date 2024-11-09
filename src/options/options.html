@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Toxic Food Filter - Options</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Toxic Food Filter Settings</h1>
+
+      <section class="settings-section">
+        <h2>Filter Strictness</h2>
+        <select id="strictnessLevel">
+          <option value="strict">Strict</option>
+          <option value="moderate" selected>Moderate</option>
+          <option value="lenient">Lenient</option>
+        </select>
+      </section>
+
+      <section class="settings-section">
+        <h2>Custom Ingredients</h2>
+        <div class="custom-ingredients">
+          <input type="text" id="newIngredient" placeholder="Enter ingredient name" />
+          <button id="addIngredient">Add</button>
+        </div>
+        <ul id="customIngredientsList">
+          <!-- Custom ingredients will be listed here -->
+        </ul>
+        <p class="note">Free tier allows up to 3 custom ingredients</p>
+      </section>
+
+      <section class="settings-section">
+        <h2>Visual Settings</h2>
+        <div class="visual-settings">
+          <label>
+            <input type="checkbox" id="showTooltips" checked />
+            Show ingredient tooltips on hover
+          </label>
+          <label>
+            <input type="checkbox" id="highlightProducts" checked />
+            Apply overlay to products with toxic ingredients
+          </label>
+        </div>
+      </section>
+
+      <button id="saveSettings" class="save-button">Save Settings</button>
+    </div>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Toxic Food Filter",
+  "version": "1.0.0",
+  "description": "Filter out products with potentially harmful ingredients on Instacart",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["*://*.instacart.com/*"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.instacart.com/*"],
+      "js": ["src/content.js"]
+    }
+  ],
+  "options_page": "src/options/options.html",
+  "action": {
+    "default_popup": "src/popup/popup.html"
+  }
+}
