@@ -1,28 +1,53 @@
-import { extractProductFromList, extractProductFromModal } from "./utils/productExtractor";
+// Dynamic import of utility functions
+async function loadProductExtractor() {
+  try {
+    const module = await import(chrome.runtime.getURL("src/utils/productExtractor.js"));
+    return {
+      extractProductFromList: module.extractProductFromList,
+      extractProductFromModal: module.extractProductFromModal,
+    };
+  } catch (error) {
+    console.error("Failed to load product extractor:", error);
+    return null;
+  }
+}
 
 class ProductScanner {
   constructor() {
     this.toxicIngredients = new Set(); // Will populate from storage/API
     this.strictnessLevel = "moderate"; // Default setting
+    this.productExtractor = null;
   }
 
   async init() {
+    // Load product extractor dynamically
+    const extractor = await loadProductExtractor();
+    if (!extractor) {
+      console.error("Could not load product extractor");
+      return;
+    }
+    this.productExtractor = extractor;
+
     await this.loadSettings();
     this.setupMutationObserver();
+    this.setupDebugShortcut();
   }
 
   async loadSettings() {
     // Load settings from chrome.storage
-    chrome.storage.sync.get(
-      {
-        strictnessLevel: "moderate",
-        customIngredients: [],
-      },
-      (settings) => {
-        this.strictnessLevel = settings.strictnessLevel;
-        settings.customIngredients.forEach((i) => this.toxicIngredients.add(i));
-      }
-    );
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(
+        {
+          strictnessLevel: "moderate",
+          customIngredients: [],
+        },
+        (settings) => {
+          this.strictnessLevel = settings.strictnessLevel;
+          settings.customIngredients.forEach((i) => this.toxicIngredients.add(i));
+          resolve();
+        }
+      );
+    });
   }
 
   setupMutationObserver() {
@@ -34,6 +59,39 @@ class ProductScanner {
       childList: true,
       subtree: true,
     });
+  }
+
+  setupDebugShortcut() {
+    document.addEventListener("keydown", (event) => {
+      // Ctrl+Shift+D to trigger debug logging
+      if (event.ctrlKey && event.shiftKey && event.key === "D") {
+        this.debugLogAllProducts();
+      }
+    });
+  }
+
+  debugLogAllProducts() {
+    console.log("===== DEBUG: Extracting All Visible Products =====");
+    const productElements = document.querySelectorAll('li[data-testid^="item_list_item_"]');
+
+    if (productElements.length === 0) {
+      console.warn("No product elements found on the page.");
+      return;
+    }
+
+    productElements.forEach((element, index) => {
+      try {
+        const productData = this.productExtractor.extractProductFromList(element);
+        console.group(`Product #${index + 1}`);
+        console.log("Raw Element:", element);
+        console.log("Extracted Data:", productData);
+        console.groupEnd();
+      } catch (error) {
+        console.error(`Error extracting product #${index + 1}:`, error);
+      }
+    });
+
+    console.log("===== DEBUG: Product Extraction Complete =====");
   }
 
   handlePageChanges(mutations) {
@@ -57,7 +115,12 @@ class ProductScanner {
 
   async analyzeProduct(productElement) {
     try {
-      const productData = extractProductFromList(productElement);
+      if (!this.productExtractor) {
+        console.error("Product extractor not loaded");
+        return;
+      }
+
+      const productData = this.productExtractor.extractProductFromList(productElement);
       if (!productData) return;
 
       // Send product data to background script
@@ -75,7 +138,12 @@ class ProductScanner {
 
   async processModal(modalElement) {
     try {
-      const modalData = extractProductFromModal(modalElement);
+      if (!this.productExtractor) {
+        console.error("Product extractor not loaded");
+        return;
+      }
+
+      const modalData = this.productExtractor.extractProductFromModal(modalElement);
       if (!modalData) return;
 
       // Send modal data to background script
