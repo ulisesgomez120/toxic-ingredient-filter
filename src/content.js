@@ -30,7 +30,7 @@ class ProductScanner {
 
     await this.loadSettings();
     this.setupMutationObserver();
-    this.setupDebugShortcut();
+    this.setupDebugShortcuts();
   }
 
   async loadSettings() {
@@ -61,11 +61,15 @@ class ProductScanner {
     });
   }
 
-  setupDebugShortcut() {
+  setupDebugShortcuts() {
     document.addEventListener("keydown", (event) => {
-      // Ctrl+Shift+D to trigger debug logging
+      // Ctrl+Shift+D to trigger product list debug logging
       if (event.ctrlKey && event.shiftKey && event.key === "D") {
         this.debugLogAllProducts();
+      }
+      // Ctrl+Shift+M to trigger modal debug logging
+      if (event.ctrlKey && event.shiftKey && event.key === "M") {
+        this.debugLogModal();
       }
     });
   }
@@ -94,6 +98,55 @@ class ProductScanner {
     console.log("===== DEBUG: Product Extraction Complete =====");
   }
 
+  debugLogModal() {
+    console.log("===== DEBUG: Extracting Modal Data =====");
+
+    try {
+      // Find the ingredients section first
+      const ingredientsSection = document.querySelector('div[id$="-Ingredients"]');
+      if (!ingredientsSection) {
+        console.warn("No ingredients section found. Please open a product modal first.");
+        return;
+      }
+
+      // Get the modal container by finding the closest portal ancestor
+      const modalElement = ingredientsSection.closest(".__reakit-portal");
+      if (!modalElement) {
+        console.warn("Could not find modal container for ingredients section.");
+        return;
+      }
+
+      console.group("Modal Data");
+      console.log("Raw Modal Element:", modalElement);
+      console.log("Ingredients Section:", ingredientsSection);
+
+      const modalData = this.productExtractor.extractProductFromModal(modalElement);
+      console.log("Extracted Modal Data:", modalData);
+
+      // Log specific sections for debugging
+      console.group("Modal Sections");
+      const ingredientsText = ingredientsSection.querySelector("p")?.textContent;
+      if (ingredientsText) {
+        console.log("Ingredients Text:", ingredientsText);
+      }
+
+      const nutritionSection = modalElement.querySelector(".e-1ml9tbj");
+      console.log("Nutrition Section:", nutritionSection);
+      if (nutritionSection) {
+        console.log("Nutrition Info:", {
+          servingSize: nutritionSection.querySelector(".e-78jcqk")?.textContent,
+          calories: nutritionSection.querySelector(".e-1thcph1")?.textContent,
+        });
+      }
+      console.groupEnd();
+      console.groupEnd();
+    } catch (error) {
+      console.error("Error extracting modal data:", error);
+    }
+
+    console.log("===== DEBUG: Modal Extraction Complete =====");
+  }
+
   handlePageChanges(mutations) {
     for (const mutation of mutations) {
       // Look for product list items being added
@@ -104,11 +157,14 @@ class ProductScanner {
         await this.analyzeProduct(element);
       });
 
-      // Look for product modal
-      const modalElement = document.querySelector('[data-dialog="true"]');
-      if (modalElement && !modalElement.hasAttribute("data-processed")) {
-        modalElement.setAttribute("data-processed", "true");
-        this.processModal(modalElement);
+      // Look for ingredients section being added
+      const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
+      if (ingredientsSection) {
+        ingredientsSection.setAttribute("data-processed", "true");
+        const modalElement = ingredientsSection.closest(".__reakit-portal");
+        if (modalElement) {
+          this.processModal(modalElement);
+        }
       }
     }
   }

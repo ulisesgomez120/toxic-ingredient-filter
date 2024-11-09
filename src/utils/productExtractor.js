@@ -37,8 +37,20 @@ function getPriceInfo(element) {
   let priceAmount = 0;
 
   if (priceElement) {
-    const priceText = priceElement.textContent.replace("$", "").trim();
-    priceAmount = parseFloat(priceText) || 0;
+    // Get all text nodes to handle superscript numbers
+    const textNodes = Array.from(priceElement.childNodes)
+      .filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE)
+      .map((node) => node.textContent.trim())
+      .join("");
+
+    // Remove dollar sign and any whitespace
+    const priceText = textNodes.replace("$", "").replace(/\s+/g, "");
+
+    // Convert to cents then to dollars
+    if (priceText) {
+      const cents = parseInt(priceText, 10);
+      priceAmount = cents / 100;
+    }
   }
 
   return {
@@ -113,41 +125,47 @@ function getAttributes(element) {
 // Modal extraction function
 function extractProductFromModal(modalContent) {
   try {
+    // Find the ingredients section
+    const ingredientsSection = modalContent.querySelector("#item_details-items_88668-23587497-Ingredients");
+    let ingredients = null;
+
+    if (ingredientsSection) {
+      const ingredientsText = ingredientsSection.querySelector(".e-tluef2")?.textContent;
+      ingredients = ingredientsText ? ingredientsText.trim() : null;
+    }
+
+    // Get nutritional information
+    const nutritionSection = modalContent.querySelector(".e-1ml9tbj");
+    const attributes = [];
+
+    if (nutritionSection) {
+      // Extract serving size
+      const servingSize = nutritionSection.querySelector(".e-78jcqk")?.textContent;
+      if (servingSize) {
+        attributes.push({
+          key: "serving_size",
+          value: servingSize.trim(),
+        });
+      }
+
+      // Extract calories
+      const calories = nutritionSection.querySelector(".e-1thcph1")?.textContent;
+      if (calories) {
+        attributes.push({
+          key: "calories",
+          value: calories.trim(),
+        });
+      }
+    }
+
     return {
-      ingredients: getIngredients(modalContent),
-      ...getModalAttributes(modalContent),
+      ingredients,
+      attributes,
     };
   } catch (error) {
     console.error("Error extracting product from modal:", error);
     return null;
   }
-}
-
-function getIngredients(modalContent) {
-  const ingredientsSection = modalContent.querySelector('[id$="-Ingredients"]');
-  if (!ingredientsSection) return null;
-
-  const ingredientsText = ingredientsSection.querySelector(".e-tluef2")?.textContent;
-  return ingredientsText ? ingredientsText.trim() : null;
-}
-
-function getModalAttributes(modalContent) {
-  const attributes = [];
-
-  // Get nutritional information
-  const nutritionSection = modalContent.querySelector(".e-1ml9tbj");
-  if (nutritionSection) {
-    // Extract serving size
-    const servingSize = nutritionSection.querySelector(".e-78jcqk")?.textContent;
-    if (servingSize) {
-      attributes.push({
-        key: "serving_size",
-        value: servingSize.trim(),
-      });
-    }
-  }
-
-  return { attributes };
 }
 
 // Usage example:

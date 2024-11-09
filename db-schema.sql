@@ -1,4 +1,4 @@
-// We have a postgres db in supabase.com
+-- We have a postgres db in supabase.com
 
 -- Stores that we scrape from
 CREATE TABLE retailers (
