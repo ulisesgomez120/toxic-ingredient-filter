@@ -6,16 +6,27 @@
   "permissions": ["storage", "activeTab"],
   "host_permissions": ["*://*.instacart.com/*"],
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["*://*.instacart.com/*"],
-      "js": ["src/content.js"]
+      "js": ["content.js"],
+      "css": ["src/styles/overlay.css"]
     }
   ],
-  "options_page": "src/options/options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["utils/*.js", "defaultIngredients.js"],
+      "matches": ["*://*.instacart.com/*"]
+    }
+  ],
   "action": {
-    "default_popup": "src/popup/popup.html"
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   }
 }

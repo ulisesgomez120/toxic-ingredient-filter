@@ -1,12 +1,16 @@
-import { extractProductFromList, extractProductFromModal } from "./utils/productExtractor";
+// src/content.js
+import { extractProductFromList, extractProductFromModal } from "/src/utils/productExtractor.js";
+import "/src/styles/overlay.css";
 
 class ProductScanner {
   constructor() {
+    console.log("ProductScanner initialized");
     this.toxicIngredients = new Set(); // Will populate from storage/API
     this.strictnessLevel = "moderate"; // Default setting
   }
 
   async init() {
+    console.log("ProductScanner init started");
     await this.loadSettings();
     this.setupMutationObserver();
   }
@@ -40,7 +44,9 @@ class ProductScanner {
     for (const mutation of mutations) {
       // Look for product list items being added
       const productElements = document.querySelectorAll('li[data-testid^="item_list_item_"]:not([data-processed])');
-
+      if (productElements.length > 0) {
+        console.log(`Found ${productElements.length} new products`);
+      }
       productElements.forEach(async (element) => {
         element.setAttribute("data-processed", "true");
         await this.analyzeProduct(element);
@@ -92,10 +98,20 @@ class ProductScanner {
     // Create and apply semi-transparent overlay
     const overlay = document.createElement("div");
     overlay.className = "toxic-overlay";
-    // Add styling and hover functionality
+    productElement.appendChild(overlay);
   }
 }
 
-// Initialize the product scanner
-const scanner = new ProductScanner();
-scanner.init();
+const init = () => {
+  const scanner = new ProductScanner();
+  scanner.init().catch(console.error);
+};
+
+// Execute initialization
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
+export default ProductScanner;

@@ -1,56 +1,107 @@
-// Background Service Worker for Toxic Food Filter
-
+// src/background.js
 class BackgroundService {
   constructor() {
+    console.log("BackgroundService initialized");
     this.setupListeners();
-    this.initializeCache();
+    this.setupCache(); // renamed for clarity
   }
 
   setupListeners() {
-    // Listen for messages from content script and options page
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       this.handleMessage(request, sender, sendResponse);
-      return true; // Indicates we'll respond asynchronously
+      return true; // Keep connection open for async response
     });
   }
 
-  async initializeCache() {
-    // TODO: Setup IndexedDB
-    // TODO: Initialize cache with basic toxic ingredients list
+  async setupCache() {
+    // Initialize extension's cache
+    this.cache = {
+      products: new Map(),
+      settings: null,
+    };
+
+    // Load any saved settings
+    chrome.storage.sync.get(
+      {
+        strictnessLevel: "moderate",
+        customIngredients: [],
+      },
+      (settings) => {
+        this.cache.settings = settings;
+      }
+    );
   }
 
   async handleMessage(request, sender, sendResponse) {
-    switch (request.type) {
-      case "CHECK_INGREDIENTS":
-        const result = await this.checkIngredients(request.ingredients);
-        sendResponse({ result });
-        break;
-      case "UPDATE_SETTINGS":
-        await this.updateSettings(request.settings);
-        sendResponse({ success: true });
-        break;
-      // Add more message handlers as needed
+    try {
+      switch (request.type) {
+        case "PRODUCT_FOUND":
+          await this.handleProductData(request.data);
+          break;
+        case "MODAL_DATA_FOUND":
+          await this.handleModalData(request.data);
+          break;
+        case "GET_SETTINGS":
+          sendResponse({ settings: this.cache.settings });
+          break;
+        default:
+          console.warn("Unknown message type:", request.type);
+      }
+    } catch (error) {
+      console.error("Error handling message:", error);
     }
   }
 
-  async checkIngredients(ingredients) {
-    // TODO: Check ingredients against local cache
-    // TODO: If not in cache, fetch from API
-    // TODO: Update cache with new data
+  async handleProductData(productData) {
+    try {
+      // Store in cache
+      this.cache.products.set(productData.external_id, {
+        ...productData,
+        lastSeen: new Date(),
+      });
+
+      // TODO: Implement database connection and storage
+      console.log("Product data received:", productData);
+    } catch (error) {
+      console.error("Error handling product data:", error);
+    }
+  }
+
+  async handleModalData(modalData) {
+    try {
+      // Update cached product if exists
+      if (modalData.external_id && this.cache.products.has(modalData.external_id)) {
+        const existingProduct = this.cache.products.get(modalData.external_id);
+        this.cache.products.set(modalData.external_id, {
+          ...existingProduct,
+          ...modalData,
+          lastUpdated: new Date(),
+        });
+      }
+
+      // TODO: Implement database connection and storage
+      console.log("Modal data received:", modalData);
+    } catch (error) {
+      console.error("Error handling modal data:", error);
+    }
+  }
+
+  // Helper method to clear cache
+  clearCache() {
+    this.cache.products.clear();
+    console.log("Cache cleared");
+  }
+
+  // Helper method to get cache stats
+  getCacheStats() {
     return {
-      toxic: [],
-      safe: [],
+      productCount: this.cache.products.size,
+      settings: this.cache.settings,
     };
-  }
-
-  async updateSettings(settings) {
-    // TODO: Update user settings in chrome.storage
-  }
-
-  async fetchFromAPI(endpoint, data) {
-    // TODO: Implement API communication
   }
 }
 
 // Initialize the background service
 const backgroundService = new BackgroundService();
+
+export default backgroundService;

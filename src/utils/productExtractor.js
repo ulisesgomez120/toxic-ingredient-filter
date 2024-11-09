@@ -163,14 +163,4 @@ function processProductList(htmlContent) {
   return products;
 }
 
-function getExternalId(element) {
-  const testId = element.getAttribute("data-testid") || "";
-  return testId.replace("item_list_item_", "");
-}
-
-function getUrlPath(element) {
-  const link = element.querySelector('a[role="button"]');
-  return link ? link.getAttribute("href") : "";
-}
-
 export { extractProductFromList, extractProductFromModal, processProductList };
