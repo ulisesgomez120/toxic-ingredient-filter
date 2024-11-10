@@ -44,6 +44,12 @@ class RetailerConfig {
         // Remove any trailing slashes or extra parts
         return pathParts[storeIndex + 1].split("/")[0];
       }
+      // If no store index, try to find retailerSlug in query parameters
+      const params = new URLSearchParams(parsedUrl.search);
+      const retailerSlug = params.get("retailerSlug");
+      if (retailerSlug) {
+        return retailerSlug;
+      }
       return null;
     } catch (error) {
       console.error("Error parsing URL:", error);
