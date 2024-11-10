@@ -63,7 +63,7 @@ class ProductScanner {
     });
   }
 
-  debugLogAllProducts() {
+  async debugLogAllProducts() {
     console.log("===== DEBUG: Extracting All Visible Products =====");
     const productElements = document.querySelectorAll('li[data-testid^="item_list_item_"]');
 
@@ -72,9 +72,9 @@ class ProductScanner {
       return;
     }
 
-    productElements.forEach((element, index) => {
+    for (const [index, element] of productElements.entries()) {
       try {
-        const productData = extractProductFromList(element);
+        const productData = await extractProductFromList(element);
         console.group(`Product #${index + 1}`);
         console.log("Raw Element:", element);
         console.log("Extracted Data:", productData);
@@ -82,12 +82,12 @@ class ProductScanner {
       } catch (error) {
         console.error(`Error extracting product #${index + 1}:`, error);
       }
-    });
+    }
 
     console.log("===== DEBUG: Product Extraction Complete =====");
   }
 
-  debugLogModal() {
+  async debugLogModal() {
     console.log("===== DEBUG: Extracting Modal Data =====");
 
     try {
@@ -109,7 +109,7 @@ class ProductScanner {
       console.log("Raw Modal Element:", modalElement);
       console.log("Ingredients Section:", ingredientsSection);
 
-      const modalData = extractProductFromModal(modalElement);
+      const modalData = await extractProductFromModal(modalElement);
       console.log("Extracted Modal Data:", modalData);
 
       // Log specific sections for debugging
@@ -165,7 +165,7 @@ class ProductScanner {
       //   return;
       // }
 
-      const productData = extractProductFromList(productElement);
+      const productData = await extractProductFromList(productElement);
       if (!productData) return;
 
       // Send product data to background script
@@ -188,7 +188,7 @@ class ProductScanner {
       //   return;
       // }
 
-      const modalData = extractProductFromModal(modalElement);
+      const modalData = await extractProductFromModal(modalElement);
       if (!modalData) return;
 
       // Send modal data to background script

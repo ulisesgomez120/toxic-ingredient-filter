@@ -8,13 +8,16 @@ async function extractProductFromList(listItem) {
     // Get retailer ID from current URL
     const retailerId = await retailerConfig.getRetailerId(window.location.href);
 
+    const name = getProductName(listItem);
+    const sizeInfo = getSizeInfo(listItem, name);
+
     return {
       external_id: getExternalId(listItem),
       url_path: getUrlPath(listItem),
-      name: getProductName(listItem),
+      name,
       retailerId,
       ...getPriceInfo(listItem),
-      ...getSizeInfo(listItem),
+      ...sizeInfo,
       image_url: getImageUrl(listItem),
       attributes: getAttributes(listItem),
     };
@@ -67,12 +70,70 @@ function getPriceInfo(element) {
   };
 }
 
-function getSizeInfo(element) {
-  const sizeElement = element.querySelector(".e-an4oxa");
-  if (!sizeElement) return { size: null, base_unit: null };
+function extractSizeFromName(name) {
+  // Common units and their variations
+  const units = {
+    weight: /\b(?:lb|lbs|pound|pounds|oz|ounce|ounces)\b/i,
+    volume: /\b(?:fl oz|fluid ounce|fluid ounces|ml|milliliter|milliliters)\b/i,
+    count: /\b(?:count|ct|pack|pk|piece|pieces)\b/i,
+  };
 
-  const sizeText = sizeElement.getAttribute("title") || sizeElement.textContent;
-  return parseSizeAndUnit(sizeText);
+  // Try to find size information in the name after a comma
+  const parts = name.split(",");
+  if (parts.length > 1) {
+    for (const part of parts.slice(1)) {
+      const trimmed = part.trim();
+
+      // Match patterns like "2 lbs", "16.9 fl oz", "6-count", "40-count"
+      const countMatch = trimmed.match(/(\d+)(?:-|\s+)(?:count|ct|pack|pk|piece|pieces)/i);
+      if (countMatch) {
+        return {
+          size: countMatch[1],
+          base_unit: "count",
+        };
+      }
+
+      // Match patterns like "3 lbs", "18 oz", "2 fl oz"
+      const sizeMatch = trimmed.match(/^([\d.]+)\s*(.+)$/);
+      if (sizeMatch) {
+        const [, size, unit] = sizeMatch;
+        if (units.weight.test(unit)) {
+          return {
+            size,
+            base_unit: unit.toLowerCase().replace(/s$/, ""), // normalize to singular form
+          };
+        }
+        if (units.volume.test(unit)) {
+          return {
+            size,
+            base_unit: unit.toLowerCase(),
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+function getSizeInfo(element, productName) {
+  // First try to get size from dedicated element
+  const sizeElement = element.querySelector(".e-an4oxa");
+  if (sizeElement) {
+    const sizeText = sizeElement.getAttribute("title") || sizeElement.textContent;
+    const elementSize = parseSizeAndUnit(sizeText);
+    if (elementSize.size && elementSize.base_unit) {
+      return elementSize;
+    }
+  }
+
+  // If no size found in element, try to extract from product name
+  const nameSize = extractSizeFromName(productName);
+  if (nameSize) {
+    return nameSize;
+  }
+
+  return { size: null, base_unit: null };
 }
 
 function parseSizeAndUnit(sizeText) {
