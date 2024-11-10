@@ -131,7 +131,7 @@ function getAttributes(element) {
 }
 
 // Modal extraction function
-async function extractProductFromModal(modalElement, listData = null) {
+async function extractProductFromModal(modalContent, listData = null) {
   try {
     // Get retailer ID if no list data provided
     const retailerId = listData ? listData.retailerId : await retailerConfig.getRetailerId(window.location.href);
@@ -175,7 +175,6 @@ async function extractProductFromModal(modalElement, listData = null) {
         attributes: [...(listData.attributes || []), ...attributes],
       };
     }
-
     return {
       ingredients,
       attributes,

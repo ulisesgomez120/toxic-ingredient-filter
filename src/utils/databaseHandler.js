@@ -369,30 +369,5 @@ class DatabaseHandler {
       data: validation.data,
     };
   }
-
-  async testModalDataProcessing(modalData) {
-    console.log("Testing modal data processing...");
-    console.log("Input data:", modalData);
-
-    // Validate the data
-    const validation = validateModalData(modalData);
-
-    if (!validation.isValid) {
-      console.error("Validation failed:", validation.errors);
-      return {
-        success: false,
-        errors: validation.errors,
-      };
-    }
-
-    console.log("Validation passed. Validated data:", validation.data);
-
-    // At this point you could call saveProductListing
-    // but for testing we'll just return the validated data
-    return {
-      success: true,
-      data: validation.data,
-    };
-  }
 }
 export default DatabaseHandler;

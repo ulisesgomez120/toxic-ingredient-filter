@@ -1,17 +1,5 @@
 // Dynamic import of utility functions
 import { extractProductFromList, extractProductFromModal } from "./utils/productExtractor";
-// async function loadProductExtractor() {
-//   try {
-//     const module = await import(chrome.runtime.getURL("src/utils/productExtractor.js"));
-//     return {
-//       extractProductFromList: module.extractProductFromList,
-//       extractProductFromModal: module.extractProductFromModal,
-//     };
-//   } catch (error) {
-//     console.error("Failed to load product extractor:", error);
-//     return null;
-//   }
-// }
 
 class ProductScanner {
   constructor() {
