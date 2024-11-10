@@ -1,4 +1,85 @@
 // src/utils/databaseHandler.js
+// Validation function to check modal data completeness
+const validateModalData = (modalData) => {
+  const requiredFields = {
+    name: "string",
+    retailerId: "number",
+    ingredients: "string",
+    externalId: "string",
+    urlPath: "string",
+  };
+
+  const optionalFields = {
+    priceAmount: "number",
+    priceUnit: "string",
+    imageUrl: "string",
+    attributes: "array",
+    baseUnit: "string",
+    size: "string",
+  };
+
+  const validationErrors = [];
+  const validatedData = {};
+
+  // Check required fields
+  for (const [field, type] of Object.entries(requiredFields)) {
+    if (!modalData[field]) {
+      validationErrors.push(`Missing required field: ${field}`);
+      continue;
+    }
+
+    if (typeof modalData[field] !== type) {
+      validationErrors.push(`Invalid type for ${field}: expected ${type}, got ${typeof modalData[field]}`);
+      continue;
+    }
+
+    validatedData[field] = modalData[field];
+  }
+
+  // Check optional fields
+  for (const [field, type] of Object.entries(optionalFields)) {
+    if (modalData[field] !== undefined) {
+      if (type === "array" && !Array.isArray(modalData[field])) {
+        validationErrors.push(`Invalid type for ${field}: expected array, got ${typeof modalData[field]}`);
+        continue;
+      } else if (type !== "array" && typeof modalData[field] !== type) {
+        validationErrors.push(`Invalid type for ${field}: expected ${type}, got ${typeof modalData[field]}`);
+        continue;
+      }
+      validatedData[field] = modalData[field];
+    }
+  }
+
+  // Special validation for attributes if present
+  if (modalData.attributes) {
+    const invalidAttributes = modalData.attributes.filter(
+      (attr) => !attr.key || !attr.value || typeof attr.key !== "string" || typeof attr.value !== "string"
+    );
+
+    if (invalidAttributes.length > 0) {
+      validationErrors.push("Invalid attributes format. Each attribute must have string key and value");
+    }
+  }
+
+  // Special validation for retailerId
+  if (validatedData.retailerId && (!Number.isInteger(validatedData.retailerId) || validatedData.retailerId <= 0)) {
+    validationErrors.push("retailerId must be a positive integer");
+  }
+
+  // Parse ingredients if it's valid
+  if (validatedData.ingredients && typeof validatedData.ingredients === "string") {
+    validatedData.ingredients = validatedData.ingredients.trim();
+    if (validatedData.ingredients.length === 0) {
+      validationErrors.push("Ingredients string cannot be empty");
+    }
+  }
+
+  return {
+    isValid: validationErrors.length === 0,
+    errors: validationErrors,
+    data: validationErrors.length === 0 ? validatedData : null,
+  };
+};
 
 class DatabaseHandler {
   constructor() {
@@ -167,18 +248,53 @@ class DatabaseHandler {
     }
   }
 
-  async createIngredientVerification(productGroupId, ingredients) {
-    const response = await fetch(`${this.supabaseUrl}/rest/v1/ingredient_verifications`, {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify({
-        product_group_id: productGroupId,
-        retailer_id: 1, // Walmart from initial data
-        hash: this.generateIngredientsHash(ingredients),
-      }),
-    });
+  async createIngredientVerification(productGroupId, ingredients, retailerId) {
+    if (!productGroupId || !ingredients || !retailerId) {
+      throw new Error("Missing required parameters for ingredient verification");
+    }
 
-    if (!response.ok) throw new Error("Failed to create ingredient verification");
+    // Validate retailerId
+    if (!Number.isInteger(retailerId) || retailerId <= 0) {
+      throw new Error("Invalid retailerId: must be a positive integer");
+    }
+
+    try {
+      // First check if retailer exists
+      const retailerResponse = await fetch(`${this.supabaseUrl}/rest/v1/retailers?id=eq.${retailerId}&select=id`, {
+        headers: this.getHeaders(),
+      });
+
+      if (!retailerResponse.ok) {
+        throw new Error("Failed to verify retailer");
+      }
+
+      const retailers = await retailerResponse.json();
+      if (retailers.length === 0) {
+        throw new Error(`Retailer with ID ${retailerId} does not exist`);
+      }
+
+      // Create verification record
+      const response = await fetch(`${this.supabaseUrl}/rest/v1/ingredient_verifications`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          product_group_id: productGroupId,
+          retailer_id: retailerId,
+          hash: this.generateIngredientsHash(ingredients),
+          verified_at: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Failed to create ingredient verification: ${error.message || "Unknown error"}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error creating ingredient verification:", error);
+      throw error; // Re-throw to handle in calling function
+    }
   }
 
   generateIngredientsHash(ingredients) {
@@ -228,6 +344,55 @@ class DatabaseHandler {
     if (!response.ok) throw new Error("Failed to fetch attributes");
     return response.json();
   }
-}
 
+  async testModalDataProcessing(modalData) {
+    console.log("Testing modal data processing...");
+    console.log("Input data:", modalData);
+
+    // Validate the data
+    const validation = validateModalData(modalData);
+
+    if (!validation.isValid) {
+      console.error("Validation failed:", validation.errors);
+      return {
+        success: false,
+        errors: validation.errors,
+      };
+    }
+
+    console.log("Validation passed. Validated data:", validation.data);
+
+    // At this point you could call saveProductListing
+    // but for testing we'll just return the validated data
+    return {
+      success: true,
+      data: validation.data,
+    };
+  }
+
+  async testModalDataProcessing(modalData) {
+    console.log("Testing modal data processing...");
+    console.log("Input data:", modalData);
+
+    // Validate the data
+    const validation = validateModalData(modalData);
+
+    if (!validation.isValid) {
+      console.error("Validation failed:", validation.errors);
+      return {
+        success: false,
+        errors: validation.errors,
+      };
+    }
+
+    console.log("Validation passed. Validated data:", validation.data);
+
+    // At this point you could call saveProductListing
+    // but for testing we'll just return the validated data
+    return {
+      success: true,
+      data: validation.data,
+    };
+  }
+}
 export default DatabaseHandler;

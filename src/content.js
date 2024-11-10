@@ -1,32 +1,33 @@
 // Dynamic import of utility functions
-async function loadProductExtractor() {
-  try {
-    const module = await import(chrome.runtime.getURL("src/utils/productExtractor.js"));
-    return {
-      extractProductFromList: module.extractProductFromList,
-      extractProductFromModal: module.extractProductFromModal,
-    };
-  } catch (error) {
-    console.error("Failed to load product extractor:", error);
-    return null;
-  }
-}
+import { extractProductFromList, extractProductFromModal } from "./utils/productExtractor";
+// async function loadProductExtractor() {
+//   try {
+//     const module = await import(chrome.runtime.getURL("src/utils/productExtractor.js"));
+//     return {
+//       extractProductFromList: module.extractProductFromList,
+//       extractProductFromModal: module.extractProductFromModal,
+//     };
+//   } catch (error) {
+//     console.error("Failed to load product extractor:", error);
+//     return null;
+//   }
+// }
 
 class ProductScanner {
   constructor() {
     this.toxicIngredients = new Set(); // Will populate from storage/API
     this.strictnessLevel = "moderate"; // Default setting
-    this.productExtractor = null;
+    // this.productExtractor = null;
   }
 
   async init() {
     // Load product extractor dynamically
-    const extractor = await loadProductExtractor();
-    if (!extractor) {
-      console.error("Could not load product extractor");
-      return;
-    }
-    this.productExtractor = extractor;
+    // const extractor = await loadProductExtractor();
+    // if (!extractor) {
+    //   console.error("Could not load product extractor");
+    //   return;
+    // }
+    // this.productExtractor = extractor;
 
     await this.loadSettings();
     this.setupMutationObserver();
@@ -85,7 +86,7 @@ class ProductScanner {
 
     productElements.forEach((element, index) => {
       try {
-        const productData = this.productExtractor.extractProductFromList(element);
+        const productData = extractProductFromList(element);
         console.group(`Product #${index + 1}`);
         console.log("Raw Element:", element);
         console.log("Extracted Data:", productData);
@@ -120,7 +121,7 @@ class ProductScanner {
       console.log("Raw Modal Element:", modalElement);
       console.log("Ingredients Section:", ingredientsSection);
 
-      const modalData = this.productExtractor.extractProductFromModal(modalElement);
+      const modalData = extractProductFromModal(modalElement);
       console.log("Extracted Modal Data:", modalData);
 
       // Log specific sections for debugging
@@ -171,12 +172,12 @@ class ProductScanner {
 
   async analyzeProduct(productElement) {
     try {
-      if (!this.productExtractor) {
-        console.error("Product extractor not loaded");
-        return;
-      }
+      // if (!this.productExtractor) {
+      //   console.error("Product extractor not loaded");
+      //   return;
+      // }
 
-      const productData = this.productExtractor.extractProductFromList(productElement);
+      const productData = extractProductFromList(productElement);
       if (!productData) return;
 
       // Send product data to background script
@@ -194,12 +195,12 @@ class ProductScanner {
 
   async processModal(modalElement) {
     try {
-      if (!this.productExtractor) {
-        console.error("Product extractor not loaded");
-        return;
-      }
+      // if (!this.productExtractor) {
+      //   console.error("Product extractor not loaded");
+      //   return;
+      // }
 
-      const modalData = this.productExtractor.extractProductFromModal(modalElement);
+      const modalData = extractProductFromModal(modalElement);
       if (!modalData) return;
 
       // Send modal data to background script

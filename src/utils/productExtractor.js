@@ -1,10 +1,18 @@
 // Main function to extract product from list item
-function extractProductFromList(listItem) {
+import RetailerConfig from "./retailerConfig";
+
+const retailerConfig = new RetailerConfig();
+
+async function extractProductFromList(listItem) {
   try {
+    // Get retailer ID from current URL
+    const retailerId = await retailerConfig.getRetailerId(window.location.href);
+
     return {
       external_id: getExternalId(listItem),
       url_path: getUrlPath(listItem),
       name: getProductName(listItem),
+      retailerId,
       ...getPriceInfo(listItem),
       ...getSizeInfo(listItem),
       image_url: getImageUrl(listItem),
@@ -123,9 +131,11 @@ function getAttributes(element) {
 }
 
 // Modal extraction function
-function extractProductFromModal(modalContent) {
+async function extractProductFromModal(modalElement, listData = null) {
   try {
-    // Find the ingredients section
+    // Get retailer ID if no list data provided
+    const retailerId = listData ? listData.retailerId : await retailerConfig.getRetailerId(window.location.href);
+
     const ingredientsSection = modalContent.querySelector("#item_details-items_88668-23587497-Ingredients");
     let ingredients = null;
 
@@ -157,10 +167,19 @@ function extractProductFromModal(modalContent) {
         });
       }
     }
+    // Merge with list data if provided
+    if (listData) {
+      return {
+        ...listData,
+        ingredients,
+        attributes: [...(listData.attributes || []), ...attributes],
+      };
+    }
 
     return {
       ingredients,
       attributes,
+      retailerId,
     };
   } catch (error) {
     console.error("Error extracting product from modal:", error);
@@ -169,16 +188,15 @@ function extractProductFromModal(modalContent) {
 }
 
 // Usage example:
-function processProductList(htmlContent) {
+async function processProductList(htmlContent) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, "text/html");
   const productElements = doc.querySelectorAll('li[data-testid^="item_list_item_"]');
 
-  const products = Array.from(productElements)
-    .map((element) => extractProductFromList(element))
-    .filter((product) => product !== null);
+  const productPromises = Array.from(productElements).map((element) => extractProductFromList(element));
 
-  return products;
+  const products = await Promise.all(productPromises);
+  return products.filter((product) => product !== null);
 }
 
 export { extractProductFromList, extractProductFromModal, processProductList };
