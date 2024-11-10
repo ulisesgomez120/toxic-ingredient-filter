@@ -191,43 +191,127 @@ function getAttributes(element) {
   return attributes;
 }
 
+function parseServingSize(servingSizeText) {
+  if (!servingSizeText) return null;
+
+  // Extract numeric value and unit from text like "Serving size 16.00 g"
+  const match = servingSizeText.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)/);
+  if (match) {
+    const [, amount, unit] = match;
+    return {
+      amount: parseFloat(amount),
+      unit: unit.toLowerCase(),
+    };
+  }
+  return null;
+}
+
+function extractNutritionalValue(text, label) {
+  if (!text) return null;
+
+  // Remove the label from the text to avoid matching wrong numbers
+  const valueText = text.replace(label, "").trim();
+
+  // Match number followed by optional unit (g, mg, %) and optional daily value
+  const match = valueText.match(/(\d+(?:\.\d+)?)\s*(?:g|mg)?/);
+  return match ? match[1] : null;
+}
+
 // Modal extraction function
 async function extractProductFromModal(modalContent, listData = null) {
   try {
     // Get retailer ID if no list data provided
     const retailerId = listData ? listData.retailerId : await retailerConfig.getRetailerId(window.location.href);
 
-    const ingredientsSection = modalContent.querySelector("#item_details-items_88668-23587497-Ingredients");
+    // Use a more generic selector that matches any div ending with "-Ingredients"
+    const ingredientsSection = modalContent.querySelector('div[id$="-Ingredients"]');
     let ingredients = null;
 
     if (ingredientsSection) {
-      const ingredientsText = ingredientsSection.querySelector(".e-tluef2")?.textContent;
-      ingredients = ingredientsText ? ingredientsText.trim() : null;
+      // Look for ingredients text in a paragraph element
+      const ingredientsText = ingredientsSection.querySelector("p")?.textContent;
+      if (ingredientsText) {
+        ingredients = ingredientsText.trim();
+      } else {
+        // Fallback to looking for the specific class if paragraph not found
+        const ingredientsTextAlt = ingredientsSection.querySelector(".e-tluef2")?.textContent;
+        ingredients = ingredientsTextAlt ? ingredientsTextAlt.trim() : null;
+      }
     }
 
-    // Get nutritional information
-    const nutritionSection = modalContent.querySelector(".e-1ml9tbj");
+    // Get nutritional information using updated class
+    const nutritionSection = modalContent.querySelector(".e-kdmqsz");
     const attributes = [];
+    const processedKeys = new Set(); // Track which keys we've already processed
 
     if (nutritionSection) {
       // Extract serving size
       const servingSize = nutritionSection.querySelector(".e-78jcqk")?.textContent;
       if (servingSize) {
-        attributes.push({
-          key: "serving_size",
-          value: servingSize.trim(),
-        });
+        const parsedSize = parseServingSize(servingSize);
+        if (parsedSize) {
+          attributes.push({
+            key: "serving_size_amount",
+            value: parsedSize.amount.toString(),
+          });
+          attributes.push({
+            key: "serving_size_unit",
+            value: parsedSize.unit,
+          });
+        }
       }
 
       // Extract calories
       const calories = nutritionSection.querySelector(".e-1thcph1")?.textContent;
       if (calories) {
-        attributes.push({
-          key: "calories",
-          value: calories.trim(),
-        });
+        const caloriesValue = calories.match(/\d+/)?.[0];
+        if (caloriesValue) {
+          attributes.push({
+            key: "calories",
+            value: caloriesValue,
+          });
+        }
+      }
+
+      // Define nutrition facts mapping
+      const nutritionFacts = [
+        { label: "Total Fat", key: "total_fat" },
+        { label: "Saturated Fat", key: "saturated_fat" },
+        { label: "Trans Fat", key: "trans_fat" },
+        { label: "Polyunsaturated Fat", key: "polyunsaturated_fat" },
+        { label: "Monounsaturated Fat", key: "monounsaturated_fat" },
+        { label: "Cholesterol", key: "cholesterol" },
+        { label: "Sodium", key: "sodium" },
+        { label: "Total Carbohydrate", key: "total_carbohydrate" },
+        { label: "Dietary Fiber", key: "dietary_fiber" },
+        { label: "Total Sugars", key: "total_sugars" },
+        { label: "Includes", key: "added_sugars" }, // "Includes X Added Sugars"
+        { label: "Protein", key: "protein" },
+      ];
+
+      // Get all text-containing elements in the nutrition section
+      const allElements = nutritionSection.getElementsByTagName("*");
+
+      for (const element of allElements) {
+        const text = element.textContent.trim();
+
+        // Skip empty text and serving size info
+        if (!text || text.includes("servings per container")) continue;
+
+        // Try to match each nutrition fact
+        for (const { label, key } of nutritionFacts) {
+          if (text.includes(label) && !processedKeys.has(key)) {
+            const value = extractNutritionalValue(text, label);
+            if (value) {
+              attributes.push({ key, value });
+              processedKeys.add(key); // Mark this key as processed
+            }
+            break;
+          }
+        }
       }
     }
+
     // Merge with list data if provided
     if (listData) {
       return {
