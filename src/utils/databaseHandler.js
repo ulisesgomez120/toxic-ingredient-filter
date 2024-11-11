@@ -7,8 +7,6 @@ const validateModalData = (modalData) => {
     ingredients: "string",
     externalId: "string",
     urlPath: "string",
-    baseUnit: "string", // Making baseUnit required
-    size: "string", // Making size required
   };
 
   const optionalFields = {
@@ -16,6 +14,8 @@ const validateModalData = (modalData) => {
     priceUnit: "string",
     imageUrl: "string",
     attributes: "array",
+    baseUnit: "string",
+    size: "string",
   };
 
   const validationErrors = [];
@@ -279,12 +279,6 @@ class DatabaseHandler {
       if (!name || name.trim() === "") {
         throw new Error("Product name is required");
       }
-      if (!baseUnit || baseUnit.trim() === "") {
-        throw new Error("Base unit is required");
-      }
-      if (!size || size.trim() === "") {
-        throw new Error("Size is required");
-      }
 
       console.log("Finding/creating product:", { productGroupId, name, baseUnit, size });
 
@@ -326,7 +320,7 @@ class DatabaseHandler {
           product_group_id: productGroupId,
           name,
           base_unit: baseUnit,
-          size,
+          size: size,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }),
