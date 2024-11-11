@@ -265,6 +265,55 @@ function extractNutritionalValue(text, label) {
   return match ? match[1] : null;
 }
 
+// Helper functions for modal extraction
+function getModalName(modalContent) {
+  // Try to find the product name in the span with class e-6vf2xs
+  const nameElement = modalContent.querySelector("span.e-6vf2xs");
+  if (nameElement) {
+    return nameElement.textContent.trim();
+  }
+
+  // Fallback to previous method
+  const titleElement = modalContent.querySelector('[data-testid="item_details_title"]');
+  if (titleElement) {
+    return titleElement.textContent.trim();
+  }
+  return null;
+}
+
+function getModalExternalId(modalContent) {
+  // Try to get the ID from data-testid attribute
+  const detailsElement = modalContent.querySelector('[data-testid^="item_details_"]');
+  if (detailsElement) {
+    const testId = detailsElement.getAttribute("data-testid");
+    return testId.replace("item_details_", "");
+  }
+
+  // Fallback: Try to get from ingredients section ID
+  const ingredientsSection = modalContent.querySelector('div[id$="-Ingredients"]');
+  if (ingredientsSection) {
+    const sectionId = ingredientsSection.id;
+    const match = sectionId.match(/(\d+)-Ingredients$/);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  // Fallback: Try to get from URL
+  const urlMatch = window.location.href.match(/\/items\/(\d+)/);
+  if (urlMatch) {
+    return urlMatch[1];
+  }
+
+  return null;
+}
+
+function getModalUrlPath() {
+  // Get the current URL path
+  const url = new URL(window.location.href);
+  return url.pathname + url.search;
+}
+
 // Modal extraction function
 async function extractProductFromModal(modalContent, listData = null) {
   try {
@@ -360,7 +409,7 @@ async function extractProductFromModal(modalContent, listData = null) {
       }
     }
 
-    // Merge with list data if provided
+    // Merge with list data if provided, otherwise extract required fields from modal
     if (listData) {
       return {
         ...listData,
@@ -368,10 +417,19 @@ async function extractProductFromModal(modalContent, listData = null) {
         attributes: [...(listData.attributes || []), ...attributes],
       };
     }
+
+    // Extract required fields from modal when list data is not available
+    const name = getModalName(modalContent);
+    const external_id = getModalExternalId(modalContent);
+    const url_path = getModalUrlPath();
+
     return {
+      name,
+      external_id,
+      url_path,
+      retailerId,
       ingredients,
       attributes,
-      retailerId,
     };
   } catch (error) {
     console.error("Error extracting product from modal:", error);
