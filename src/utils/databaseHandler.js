@@ -1,21 +1,26 @@
 // src/utils/databaseHandler.js
 // Validation function to check modal data completeness
-const validateModalData = (modalData) => {
+const validateModalData = (modalData, isModalView = false) => {
   const requiredFields = {
     name: "string",
     retailerId: "number",
-    ingredients: "string",
     externalId: "string",
     urlPath: "string",
   };
+
+  // Only require ingredients for modal view
+  if (isModalView) {
+    requiredFields.ingredients = "string";
+  }
 
   const optionalFields = {
     priceAmount: "number",
     priceUnit: "string",
     imageUrl: "string",
     attributes: "array",
-    baseUnit: "string",
-    size: "string",
+    ingredients: "string", // Optional for list view
+    // baseUnit: "string",
+    // size: "string",
   };
 
   const validationErrors = [];
@@ -132,8 +137,11 @@ class DatabaseHandler {
     try {
       console.log("Saving product data:", JSON.stringify(productData, null, 2));
 
+      // Determine if this is modal data by checking for ingredients
+      const isModalView = "ingredients" in productData;
+
       // Validate the data first
-      const validation = validateModalData(productData);
+      const validation = validateModalData(productData, isModalView);
       if (!validation.isValid) {
         throw new Error(`Invalid product data: ${validation.errors.join(", ")}`);
       }
@@ -633,7 +641,7 @@ class DatabaseHandler {
     console.log("Input data:", JSON.stringify(modalData, null, 2));
 
     // Validate the data
-    const validation = validateModalData(modalData);
+    const validation = validateModalData(modalData, true); // Pass true to indicate modal view
 
     if (!validation.isValid) {
       console.error("Validation failed:", validation.errors);
