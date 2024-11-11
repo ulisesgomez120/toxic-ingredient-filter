@@ -7,6 +7,8 @@ const validateModalData = (modalData) => {
     ingredients: "string",
     externalId: "string",
     urlPath: "string",
+    baseUnit: "string", // Making baseUnit required
+    size: "string", // Making size required
   };
 
   const optionalFields = {
@@ -14,8 +16,6 @@ const validateModalData = (modalData) => {
     priceUnit: "string",
     imageUrl: "string",
     attributes: "array",
-    baseUnit: "string",
-    size: "string",
   };
 
   const validationErrors = [];
@@ -30,6 +30,12 @@ const validateModalData = (modalData) => {
 
     if (typeof modalData[field] !== type) {
       validationErrors.push(`Invalid type for ${field}: expected ${type}, got ${typeof modalData[field]}`);
+      continue;
+    }
+
+    // Additional validation for empty strings
+    if (type === "string" && modalData[field].trim() === "") {
+      validationErrors.push(`Field ${field} cannot be empty`);
       continue;
     }
 
@@ -126,6 +132,12 @@ class DatabaseHandler {
     try {
       console.log("Saving product data:", JSON.stringify(productData, null, 2));
 
+      // Validate the data first
+      const validation = validateModalData(productData);
+      if (!validation.isValid) {
+        throw new Error(`Invalid product data: ${validation.errors.join(", ")}`);
+      }
+
       // Step 1: Find or create product group
       const productGroup = await this.findOrCreateProductGroup({
         brand: productData.brand || "",
@@ -195,9 +207,13 @@ class DatabaseHandler {
 
   async findOrCreateProductGroup({ brand, baseName }) {
     try {
+      if (!baseName || baseName.trim() === "") {
+        throw new Error("Base name is required for product group");
+      }
+
       console.log("Finding/creating product group:", { brand, baseName });
 
-      // First try to find existing product group
+      // First try to find existing product group with exact match
       const searchResponse = await fetch(
         `${this.supabaseUrl}/rest/v1/product_groups?brand=eq.${encodeURIComponent(
           brand
@@ -210,21 +226,44 @@ class DatabaseHandler {
       const existingGroups = await this.handleResponse(searchResponse, "Failed to search for product group");
 
       if (existingGroups && existingGroups.length > 0) {
+        console.log("Found existing product group:", existingGroups[0]);
         return existingGroups[0];
       }
 
-      // If not found, create new product group
+      // If not found, create new product group with ON CONFLICT DO NOTHING
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
         method: "POST",
-        headers: this.getHeaders("return=representation"),
+        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
         body: JSON.stringify({
           brand,
           base_name: baseName,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
       });
 
-      const data = await this.handleResponse(createResponse, "Failed to create product group");
-      return Array.isArray(data) ? data[0] : data;
+      const newGroup = await this.handleResponse(createResponse, "Failed to create product group");
+
+      // If creation failed due to conflict, try to find the existing one again
+      if (!newGroup || !newGroup.id) {
+        const retryResponse = await fetch(
+          `${this.supabaseUrl}/rest/v1/product_groups?brand=eq.${encodeURIComponent(
+            brand
+          )}&base_name=eq.${encodeURIComponent(baseName)}`,
+          {
+            headers: this.getHeaders(),
+          }
+        );
+
+        const retryGroups = await this.handleResponse(retryResponse, "Failed to retry search for product group");
+        if (retryGroups && retryGroups.length > 0) {
+          console.log("Found product group after conflict:", retryGroups[0]);
+          return retryGroups[0];
+        }
+      }
+
+      console.log("Created new product group:", newGroup);
+      return Array.isArray(newGroup) ? newGroup[0] : newGroup;
     } catch (error) {
       console.error("Error in findOrCreateProductGroup:", error);
       throw error;
@@ -233,9 +272,54 @@ class DatabaseHandler {
 
   async findOrCreateProduct({ productGroupId, name, baseUnit, size }) {
     try {
+      // Validate required fields
+      if (!productGroupId) {
+        throw new Error("Product group ID is required");
+      }
+      if (!name || name.trim() === "") {
+        throw new Error("Product name is required");
+      }
+      if (!baseUnit || baseUnit.trim() === "") {
+        throw new Error("Base unit is required");
+      }
+      if (!size || size.trim() === "") {
+        throw new Error("Size is required");
+      }
+
       console.log("Finding/creating product:", { productGroupId, name, baseUnit, size });
 
-      const response = await fetch(`${this.supabaseUrl}/rest/v1/products`, {
+      // First try to find existing product
+      const searchResponse = await fetch(
+        `${this.supabaseUrl}/rest/v1/products?product_group_id=eq.${productGroupId}&name=eq.${encodeURIComponent(
+          name
+        )}`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      const existingProducts = await this.handleResponse(searchResponse, "Failed to search for product");
+
+      if (existingProducts && existingProducts.length > 0) {
+        // Update existing product if needed
+        if (existingProducts[0].base_unit !== baseUnit || existingProducts[0].size !== size) {
+          const updateResponse = await fetch(`${this.supabaseUrl}/rest/v1/products?id=eq.${existingProducts[0].id}`, {
+            method: "PATCH",
+            headers: this.getHeaders("return=representation"),
+            body: JSON.stringify({
+              base_unit: baseUnit,
+              size: size,
+              updated_at: new Date().toISOString(),
+            }),
+          });
+          const data = await this.handleResponse(updateResponse, "Failed to update product");
+          return Array.isArray(data) ? data[0] : data;
+        }
+        return existingProducts[0];
+      }
+
+      // If not found, create new product with ON CONFLICT DO NOTHING
+      const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/products`, {
         method: "POST",
         headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
         body: JSON.stringify({
@@ -243,11 +327,33 @@ class DatabaseHandler {
           name,
           base_unit: baseUnit,
           size,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
       });
 
-      const data = await this.handleResponse(response, "Failed to create product");
-      return Array.isArray(data) ? data[0] : data;
+      const newProduct = await this.handleResponse(createResponse, "Failed to create product");
+
+      // If creation failed due to conflict, try to find the existing one again
+      if (!newProduct || !newProduct.id) {
+        const retryResponse = await fetch(
+          `${this.supabaseUrl}/rest/v1/products?product_group_id=eq.${productGroupId}&name=eq.${encodeURIComponent(
+            name
+          )}`,
+          {
+            headers: this.getHeaders(),
+          }
+        );
+
+        const retryProducts = await this.handleResponse(retryResponse, "Failed to retry search for product");
+        if (retryProducts && retryProducts.length > 0) {
+          console.log("Found product after conflict:", retryProducts[0]);
+          return retryProducts[0];
+        }
+      }
+
+      console.log("Created new product:", newProduct);
+      return Array.isArray(newProduct) ? newProduct[0] : newProduct;
     } catch (error) {
       console.error("Error in findOrCreateProduct:", error);
       throw error;
@@ -266,7 +372,7 @@ class DatabaseHandler {
         imageUrl,
       });
 
-      // First, try to find existing listing
+      // First, try to find existing listing by both retailer_id and external_id
       const searchResponse = await fetch(
         `${this.supabaseUrl}/rest/v1/product_listings?retailer_id=eq.${retailerId}&external_id=eq.${encodeURIComponent(
           externalId
@@ -292,6 +398,7 @@ class DatabaseHandler {
               price_unit: priceUnit,
               image_url: imageUrl,
               last_seen_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }),
           }
         );
@@ -300,10 +407,10 @@ class DatabaseHandler {
         return Array.isArray(data) ? data[0] : data;
       }
 
-      // If not found, create new listing
+      // If not found, create new listing with ON CONFLICT DO NOTHING
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_listings`, {
         method: "POST",
-        headers: this.getHeaders("return=representation"),
+        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
         body: JSON.stringify({
           product_id: productId,
           retailer_id: retailerId,
@@ -313,11 +420,33 @@ class DatabaseHandler {
           price_unit: priceUnit,
           image_url: imageUrl,
           last_seen_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
       });
 
-      const data = await this.handleResponse(createResponse, "Failed to create product listing");
-      return Array.isArray(data) ? data[0] : data;
+      const newListing = await this.handleResponse(createResponse, "Failed to create product listing");
+
+      // If creation failed due to conflict, try to find the existing one again
+      if (!newListing || !newListing.id) {
+        const retryResponse = await fetch(
+          `${
+            this.supabaseUrl
+          }/rest/v1/product_listings?retailer_id=eq.${retailerId}&external_id=eq.${encodeURIComponent(externalId)}`,
+          {
+            headers: this.getHeaders(),
+          }
+        );
+
+        const retryListings = await this.handleResponse(retryResponse, "Failed to retry search for product listing");
+        if (retryListings && retryListings.length > 0) {
+          console.log("Found product listing after conflict:", retryListings[0]);
+          return retryListings[0];
+        }
+      }
+
+      console.log("Created new product listing:", newListing);
+      return Array.isArray(newListing) ? newListing[0] : newListing;
     } catch (error) {
       console.error("Error in upsertProductListing:", error);
       throw error;
@@ -340,15 +469,17 @@ class DatabaseHandler {
 
       await this.handleResponse(updateResponse, "Failed to update existing ingredients");
 
-      // Then insert new ingredients
+      // Then insert new ingredients with ON CONFLICT DO NOTHING
       const insertResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients`, {
         method: "POST",
-        headers: this.getHeaders("return=representation"),
+        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
         body: JSON.stringify({
           product_group_id: productGroupId,
           ingredients,
           is_current: true,
           verification_count: 1,
+          found_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
         }),
       });
 
@@ -375,17 +506,19 @@ class DatabaseHandler {
 
       await this.handleResponse(updateResponse, "Failed to update existing attributes");
 
-      // Insert new attributes
+      // Insert new attributes with ON CONFLICT DO NOTHING
       for (const attr of attributes) {
         const insertResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_attributes`, {
           method: "POST",
-          headers: this.getHeaders("return=representation"),
+          headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
           body: JSON.stringify({
             product_id: productId,
             retailer_id: retailerId,
             key: attr.key,
             value: attr.value,
             is_current: true,
+            found_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
           }),
         });
 
@@ -422,10 +555,10 @@ class DatabaseHandler {
         throw new Error(`Retailer with ID ${retailerId} does not exist`);
       }
 
-      // Create verification record
+      // Create verification record with ON CONFLICT DO NOTHING
       const verificationResponse = await fetch(`${this.supabaseUrl}/rest/v1/ingredient_verifications`, {
         method: "POST",
-        headers: this.getHeaders("return=representation"),
+        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
         body: JSON.stringify({
           product_group_id: productGroupId,
           retailer_id: retailerId,
