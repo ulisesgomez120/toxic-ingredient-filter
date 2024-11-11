@@ -10,11 +10,13 @@ async function extractProductFromList(listItem) {
 
     const name = getProductName(listItem);
     const sizeInfo = getSizeInfo(listItem, name);
+    const brand = extractBrandFromName(name);
 
     return {
       external_id: getExternalId(listItem),
       url_path: getUrlPath(listItem),
       name,
+      brand,
       retailerId,
       ...getPriceInfo(listItem),
       ...sizeInfo,
@@ -25,6 +27,52 @@ async function extractProductFromList(listItem) {
     console.error("Error extracting product from list:", error);
     return null;
   }
+}
+
+// Helper function to extract brand from product name
+function extractBrandFromName(name) {
+  if (!name) return "";
+
+  // Common brand patterns:
+  // 1. Brand Name - Product Description
+  // 2. Brand Name® Product Description
+  // 3. Brand Name™ Product Description
+  // 4. BRAND NAME Product Description
+
+  // Try to find brand by looking for common separators
+  const separators = [" - ", " – ", "®", "™", ":"];
+  for (const separator of separators) {
+    const parts = name.split(separator);
+    if (parts.length > 1) {
+      return parts[0].trim();
+    }
+  }
+
+  // Try to find brand by looking for all caps portion at start
+  const words = name.split(" ");
+  let brandWords = [];
+  for (const word of words) {
+    // If word is all caps (allowing for '&' and ''')
+    if (word.replace(/[&']/g, "").toUpperCase() === word.replace(/[&']/g, "")) {
+      brandWords.push(word);
+    } else {
+      break;
+    }
+  }
+  if (brandWords.length > 0) {
+    return brandWords.join(" ");
+  }
+
+  // If no clear separator or pattern, try to extract first 2-3 words as brand
+  // but only if they look like a brand (capitalized words)
+  const potentialBrandWords = words.slice(0, 3);
+  const isBrandWord = (word) => /^[A-Z]/.test(word) && word.length > 1;
+  const brandCandidates = potentialBrandWords.filter(isBrandWord);
+  if (brandCandidates.length >= 1) {
+    return brandCandidates.join(" ");
+  }
+
+  return "";
 }
 
 // Helper functions for list extraction
