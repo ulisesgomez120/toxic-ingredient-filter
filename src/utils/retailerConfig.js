@@ -4,6 +4,8 @@ class RetailerConfig {
     this.supabaseUrl = process.env.SUPABASE_URL;
     this.supabaseKey = process.env.SUPABASE_KEY;
     this.retailers = new Map(); // Cache for retailer data
+    this.retailersByName = new Map(); // Case-insensitive name to ID mapping
+    this.currentRetailerId = null; // Store current retailer's ID
     this.lastFetch = null;
     this.CACHE_DURATION = 1000 * 60 * 60; // 1 hour
   }
@@ -19,19 +21,43 @@ class RetailerConfig {
       // Check and potentially refresh retailer cache
       await this.ensureRetailerCache();
 
-      // Find matching retailer
-      const retailer = [...this.retailers.values()].find((r) => r.name.toLowerCase() === storeName.toLowerCase());
-
-      if (!retailer) {
-        // If retailer not found, try to create it
-        return await this.createRetailer(storeName);
+      // First check if we have a current retailer ID that matches
+      if (this.currentRetailerId) {
+        const currentRetailer = this.retailers.get(this.currentRetailerId);
+        if (currentRetailer && currentRetailer.name.toLowerCase() === storeName.toLowerCase()) {
+          return this.currentRetailerId;
+        }
       }
 
-      return retailer.id;
+      // Check cache using case-insensitive name lookup
+      const retailerId = this.retailersByName.get(storeName.toLowerCase());
+      if (retailerId) {
+        this.currentRetailerId = retailerId;
+        return retailerId;
+      }
+
+      // If not in cache, try to find in database
+      const existingRetailer = await this.findRetailer(storeName);
+      if (existingRetailer) {
+        this.addToCache(existingRetailer);
+        this.currentRetailerId = existingRetailer.id;
+        return existingRetailer.id;
+      }
+
+      // If not found anywhere, create new retailer
+      const newRetailer = await this.createRetailer(storeName);
+      this.addToCache(newRetailer);
+      this.currentRetailerId = newRetailer.id;
+      return newRetailer.id;
     } catch (error) {
       console.error("Error getting retailer ID:", error);
       throw error;
     }
+  }
+
+  addToCache(retailer) {
+    this.retailers.set(retailer.id, retailer);
+    this.retailersByName.set(retailer.name.toLowerCase(), retailer.id);
   }
 
   extractStoreFromUrl(url) {
@@ -67,10 +93,7 @@ class RetailerConfig {
   async loadRetailers() {
     try {
       const response = await fetch(`${this.supabaseUrl}/rest/v1/retailers?select=id,name,website&is_active=eq.true`, {
-        headers: {
-          apikey: this.supabaseKey,
-          Authorization: `Bearer ${this.supabaseKey}`,
-        },
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -78,9 +101,14 @@ class RetailerConfig {
       }
 
       const retailers = await response.json();
+
+      // Clear both caches
       this.retailers.clear();
+      this.retailersByName.clear();
+
+      // Populate both caches
       retailers.forEach((retailer) => {
-        this.retailers.set(retailer.id, retailer);
+        this.addToCache(retailer);
       });
 
       this.lastFetch = Date.now();
@@ -90,20 +118,63 @@ class RetailerConfig {
     }
   }
 
+  async findRetailer(name) {
+    try {
+      // Check cache first using case-insensitive lookup
+      const cachedId = this.retailersByName.get(name.toLowerCase());
+      if (cachedId) {
+        return this.retailers.get(cachedId);
+      }
+
+      const response = await fetch(
+        `${this.supabaseUrl}/rest/v1/retailers?name=ilike.${encodeURIComponent(name)}&website=eq.instacart`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to search for retailer");
+      }
+
+      const retailers = await response.json();
+      if (retailers && retailers.length > 0) {
+        const retailer = retailers[0];
+        this.addToCache(retailer);
+        return retailer;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error finding retailer:", error);
+      throw error;
+    }
+  }
+
   async createRetailer(name) {
     try {
+      // Check cache one more time before creating
+      const cachedId = this.retailersByName.get(name.toLowerCase());
+      if (cachedId) {
+        return this.retailers.get(cachedId);
+      }
+
+      // Double-check database before creating
+      const existingRetailer = await this.findRetailer(name);
+      if (existingRetailer) {
+        this.addToCache(existingRetailer);
+        return existingRetailer;
+      }
+
+      // If not found, create new retailer
       const response = await fetch(`${this.supabaseUrl}/rest/v1/retailers`, {
         method: "POST",
-        headers: {
-          apikey: this.supabaseKey,
-          Authorization: `Bearer ${this.supabaseKey}`,
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
+        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
         body: JSON.stringify({
           name: name,
           website: "instacart",
           is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }),
       });
 
@@ -112,12 +183,60 @@ class RetailerConfig {
       }
 
       const [newRetailer] = await response.json();
-      this.retailers.set(newRetailer.id, newRetailer);
-      return newRetailer.id;
+
+      // If creation failed or returned no data, try to find existing one last time
+      if (!newRetailer || !newRetailer.id) {
+        const retryRetailer = await this.findRetailer(name);
+        if (retryRetailer) {
+          this.addToCache(retryRetailer);
+          return retryRetailer;
+        }
+        throw new Error("Failed to create or find retailer");
+      }
+
+      this.addToCache(newRetailer);
+      return newRetailer;
     } catch (error) {
       console.error("Error creating retailer:", error);
       throw error;
     }
+  }
+
+  async verifyRetailer(retailerId) {
+    try {
+      // Check cache first
+      if (this.retailers.has(retailerId)) {
+        return true;
+      }
+
+      const response = await fetch(`${this.supabaseUrl}/rest/v1/retailers?id=eq.${retailerId}&select=id`, {
+        headers: this.getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to verify retailer");
+      }
+
+      const retailers = await response.json();
+      return Array.isArray(retailers) && retailers.length > 0;
+    } catch (error) {
+      console.error("Error verifying retailer:", error);
+      throw error;
+    }
+  }
+
+  getHeaders(prefer = null) {
+    const headers = {
+      apikey: this.supabaseKey,
+      Authorization: `Bearer ${this.supabaseKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (prefer) {
+      headers["Prefer"] = prefer;
+    }
+
+    return headers;
   }
 }
 

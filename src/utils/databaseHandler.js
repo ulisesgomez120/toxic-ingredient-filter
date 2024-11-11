@@ -133,6 +133,67 @@ class DatabaseHandler {
     }
   }
 
+  // New method to find retailer by name and website
+  async findRetailer(name, website) {
+    try {
+      console.log("Finding retailer:", { name, website });
+
+      const response = await fetch(
+        `${this.supabaseUrl}/rest/v1/retailers?name=eq.${encodeURIComponent(name)}&website=eq.${encodeURIComponent(
+          website
+        )}`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      const retailers = await this.handleResponse(response, "Failed to find retailer");
+      return retailers && retailers.length > 0 ? retailers[0] : null;
+    } catch (error) {
+      console.error("Error in findRetailer:", error);
+      throw error;
+    }
+  }
+
+  // New method to get or create retailer
+  async getOrCreateRetailer(name, website) {
+    try {
+      // First try to find existing retailer
+      const existingRetailer = await this.findRetailer(name, website);
+      if (existingRetailer) {
+        return existingRetailer;
+      }
+
+      // If not found, create new retailer
+      const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/retailers`, {
+        method: "POST",
+        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
+        body: JSON.stringify({
+          name,
+          website,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }),
+      });
+
+      const newRetailer = await this.handleResponse(createResponse, "Failed to create retailer");
+
+      // If creation failed due to conflict, try to find the existing one again
+      if (!newRetailer || !newRetailer.id) {
+        const retryRetailer = await this.findRetailer(name, website);
+        if (retryRetailer) {
+          return retryRetailer;
+        }
+      }
+
+      return Array.isArray(newRetailer) ? newRetailer[0] : newRetailer;
+    } catch (error) {
+      console.error("Error in getOrCreateRetailer:", error);
+      throw error;
+    }
+  }
+
   async saveProductListing(productData) {
     try {
       console.log("Saving product data:", JSON.stringify(productData, null, 2));
