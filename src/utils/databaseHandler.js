@@ -94,12 +94,16 @@ const validateModalData = (modalData, isModalView = false) => {
 
 class DatabaseHandler {
   constructor() {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
-      throw new Error("Database configuration missing. Ensure environment variables are set.");
-    }
-
+    // Access environment variables through webpack's process.env
     this.supabaseUrl = process.env.SUPABASE_URL;
     this.supabaseKey = process.env.SUPABASE_KEY;
+
+    if (!this.supabaseUrl || !this.supabaseKey) {
+      console.error("Database configuration missing. Using environment variables:", {
+        url: this.supabaseUrl ? "set" : "missing",
+        key: this.supabaseKey ? "set" : "missing",
+      });
+    }
   }
 
   async handleResponse(response, errorMessage) {
@@ -595,71 +599,6 @@ class DatabaseHandler {
     }
   }
 
-  async createIngredientVerification(productGroupId, ingredients, retailerId) {
-    if (!productGroupId || !ingredients || !retailerId) {
-      throw new Error("Missing required parameters for ingredient verification");
-    }
-
-    // Validate retailerId
-    if (!Number.isInteger(retailerId) || retailerId <= 0) {
-      throw new Error("Invalid retailerId: must be a positive integer");
-    }
-
-    try {
-      console.log("Creating ingredient verification:", { productGroupId, retailerId });
-
-      // First check if retailer exists
-      const retailerResponse = await fetch(`${this.supabaseUrl}/rest/v1/retailers?id=eq.${retailerId}&select=id`, {
-        headers: this.getHeaders(),
-      });
-
-      const retailers = await this.handleResponse(retailerResponse, "Failed to verify retailer");
-      if (!Array.isArray(retailers) || retailers.length === 0) {
-        throw new Error(`Retailer with ID ${retailerId} does not exist`);
-      }
-
-      // Create verification record with ON CONFLICT DO NOTHING
-      const verificationResponse = await fetch(`${this.supabaseUrl}/rest/v1/ingredient_verifications`, {
-        method: "POST",
-        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
-        body: JSON.stringify({
-          product_group_id: productGroupId,
-          retailer_id: retailerId,
-          hash: this.generateIngredientsHash(ingredients),
-          verified_at: new Date().toISOString(),
-        }),
-      });
-
-      return await this.handleResponse(verificationResponse, "Failed to create ingredient verification");
-    } catch (error) {
-      console.error("Error creating ingredient verification:", error);
-      throw error;
-    }
-  }
-
-  generateIngredientsHash(ingredients) {
-    return Array.from(ingredients)
-      .reduce((hash, char) => {
-        return ((hash << 5) - hash + char.charCodeAt(0)) | 0;
-      }, 0)
-      .toString(16);
-  }
-
-  getHeaders(prefer = null) {
-    const headers = {
-      apikey: this.supabaseKey,
-      Authorization: `Bearer ${this.supabaseKey}`,
-      "Content-Type": "application/json",
-    };
-
-    if (prefer) {
-      headers["Prefer"] = prefer;
-    }
-
-    return headers;
-  }
-
-  // Utility methods for retrieving data
   async getProductIngredients(productGroupId) {
     try {
       console.log("Getting product ingredients:", { productGroupId });
@@ -672,7 +611,7 @@ class DatabaseHandler {
       );
 
       const data = await this.handleResponse(response, "Failed to fetch ingredients");
-      return Array.isArray(data) ? data[0]?.ingredients : null;
+      return Array.isArray(data) && data.length > 0 ? data[0].ingredients : null;
     } catch (error) {
       console.error("Error in getProductIngredients:", error);
       throw error;
@@ -714,12 +653,24 @@ class DatabaseHandler {
 
     console.log("Validation passed. Validated data:", validation.data);
 
-    // At this point you could call saveProductListing
-    // but for testing we'll just return the validated data
     return {
       success: true,
       data: validation.data,
     };
+  }
+
+  getHeaders(prefer = null) {
+    const headers = {
+      apikey: this.supabaseKey,
+      Authorization: `Bearer ${this.supabaseKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (prefer) {
+      headers["Prefer"] = prefer;
+    }
+
+    return headers;
   }
 }
 
