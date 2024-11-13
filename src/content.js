@@ -27,7 +27,6 @@ class ProductScanner {
 
     await this.loadSettings();
     this.setupMutationObserver();
-    this.setupDebugShortcuts();
   }
 
   // Extract the store-specific ID prefix from an external_id
@@ -74,19 +73,6 @@ class ProductScanner {
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-    });
-  }
-
-  setupDebugShortcuts() {
-    document.addEventListener("keydown", (event) => {
-      // Ctrl+Shift+D to trigger product list debug logging
-      if (event.ctrlKey && event.shiftKey && event.key === "D") {
-        this.debugLogAllProducts();
-      }
-      // Ctrl+Shift+M to trigger modal debug logging
-      if (event.ctrlKey && event.shiftKey && event.key === "M") {
-        this.debugLogModal();
-      }
     });
   }
 
@@ -151,12 +137,6 @@ class ProductScanner {
           console.error("Error saving product to database:", error);
         }
       }
-
-      // Send product data to background script
-      chrome.runtime.sendMessage({
-        type: "PRODUCT_FOUND",
-        data: rawProductData,
-      });
     } catch (error) {
       console.error("Error analyzing product:", error);
     }
@@ -194,12 +174,6 @@ class ProductScanner {
           console.error("Error saving ingredients to database:", error);
         }
       }
-
-      // Send modal data to background script
-      chrome.runtime.sendMessage({
-        type: "MODAL_DATA_FOUND",
-        data: rawModalData,
-      });
     } catch (error) {
       console.error("Error processing modal:", error);
     }

@@ -1,4 +1,5 @@
 // src/utils/databaseHandler.js
+
 // Validation function to check modal data completeness
 const validateModalData = (modalData, isModalView = false) => {
   const requiredFields = {

@@ -146,77 +146,10 @@ export class ProductDataManager {
         if (dbData && dbData.ingredients) {
           // We have data in the database
           this.handleProductData(productId, dbData);
-        } else {
-          // Need to fetch from modal
-          await this.fetchFromModal(productId, productData);
         }
       }
     } catch (error) {
       console.error("Error processing chunk:", error);
-    }
-  }
-
-  /**
-   * Fetch ingredient data by opening the product modal
-   */
-  async fetchFromModal(productId, productData) {
-    try {
-      // Create a hidden modal trigger button
-      const button = document.createElement("button");
-      button.style.display = "none";
-      button.setAttribute("data-testid", `product_modal_trigger_${productId}`);
-      document.body.appendChild(button);
-
-      // Simulate click to open modal
-      button.click();
-
-      // Wait for modal to open and ingredients to load
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Extract ingredients from modal
-      const ingredientsSection = document.querySelector('div[id$="-Ingredients"]');
-      if (ingredientsSection) {
-        const ingredientsText = ingredientsSection.querySelector("p")?.textContent;
-        if (ingredientsText) {
-          // Save to database if possible
-          try {
-            const formattedData = {
-              brand: productData.brand || "",
-              baseName: productData.name,
-              name: productData.name,
-              retailerId: productData.retailerId,
-              externalId: productData.external_id,
-              urlPath: productData.url_path,
-            };
-
-            const productGroup = await this.dbHandler.findOrCreateProductGroup({
-              brand: formattedData.brand,
-              baseName: formattedData.name,
-            });
-
-            if (productGroup) {
-              await this.dbHandler.saveIngredients(productGroup.id, ingredientsText);
-            }
-          } catch (error) {
-            console.error("Error saving ingredients to database:", error);
-          }
-
-          // Handle the product data
-          this.handleProductData(productId, {
-            ...productData,
-            ingredients: ingredientsText,
-          });
-        }
-      }
-
-      // Close modal and cleanup
-      const closeButton = document.querySelector('[aria-label="Close"]');
-      if (closeButton) closeButton.click();
-      button.remove();
-    } catch (error) {
-      console.error("Error fetching from modal:", error);
-      // Execute callbacks with error state
-      this.executeCallbacks(productId, null);
     }
   }
 
