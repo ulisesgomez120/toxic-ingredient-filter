@@ -18,10 +18,8 @@ const validateModalData = (modalData, isModalView = false) => {
     priceAmount: "number",
     priceUnit: "string",
     imageUrl: "string",
-    attributes: "array",
+    nutrition: "object",
     ingredients: "string", // Optional for list view
-    // baseUnit: "string",
-    // size: "string",
   };
 
   const validationErrors = [];
@@ -51,25 +49,11 @@ const validateModalData = (modalData, isModalView = false) => {
   // Check optional fields
   for (const [field, type] of Object.entries(optionalFields)) {
     if (modalData[field] !== undefined) {
-      if (type === "array" && !Array.isArray(modalData[field])) {
-        validationErrors.push(`Invalid type for ${field}: expected array, got ${typeof modalData[field]}`);
-        continue;
-      } else if (type !== "array" && typeof modalData[field] !== type) {
+      if (typeof modalData[field] !== type) {
         validationErrors.push(`Invalid type for ${field}: expected ${type}, got ${typeof modalData[field]}`);
         continue;
       }
       validatedData[field] = modalData[field];
-    }
-  }
-
-  // Special validation for attributes if present
-  if (modalData.attributes) {
-    const invalidAttributes = modalData.attributes.filter(
-      (attr) => !attr.key || !attr.value || typeof attr.key !== "string" || typeof attr.value !== "string"
-    );
-
-    if (invalidAttributes.length > 0) {
-      validationErrors.push("Invalid attributes format. Each attribute must have string key and value");
     }
   }
 
@@ -107,6 +91,30 @@ class DatabaseHandler {
     }
   }
 
+  // Normalize product name for better matching
+  normalizeProductName(name) {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "") // Remove special characters
+      .replace(/\s+/g, " ") // Normalize spaces
+      .trim();
+  }
+
+  // Extract brand and base name from product name
+  extractProductInfo(name) {
+    const normalized = this.normalizeProductName(name);
+    const parts = normalized.split(" ");
+
+    // Assume first word is brand if it's a known brand
+    const knownBrands = ["doritos", "tostitos", "lindt", "ghirardelli", "bugles", "minute", "tree"];
+    const brand = knownBrands.find((b) => parts[0].includes(b)) || "";
+
+    // Remove brand from base name if found
+    const baseName = brand ? normalized.replace(brand, "").trim() : normalized;
+
+    return { brand, baseName };
+  }
+
   async handleResponse(response, errorMessage) {
     if (!response.ok) {
       const errorText = await response.text();
@@ -122,23 +130,18 @@ class DatabaseHandler {
     const contentType = response.headers.get("content-type");
     if (!contentType || !contentType.includes("application/json")) {
       console.error("Unexpected response type:", contentType);
-      // Return empty object for non-JSON responses that are successful
       return {};
     }
 
     try {
       const data = await response.json();
-      if (!data) {
-        return {}; // Return empty object for null/undefined data
-      }
-      return data;
+      return data || {};
     } catch (error) {
       console.error("Error parsing JSON response:", error);
       throw new Error("Failed to parse response: " + error.message);
     }
   }
 
-  // New method to find retailer by name and website
   async findRetailer(name, website) {
     try {
       console.log("Finding retailer:", { name, website });
@@ -160,16 +163,13 @@ class DatabaseHandler {
     }
   }
 
-  // New method to get or create retailer
   async getOrCreateRetailer(name, website) {
     try {
-      // First try to find existing retailer
       const existingRetailer = await this.findRetailer(name, website);
       if (existingRetailer) {
         return existingRetailer;
       }
 
-      // If not found, create new retailer
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/retailers`, {
         method: "POST",
         headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
@@ -183,15 +183,6 @@ class DatabaseHandler {
       });
 
       const newRetailer = await this.handleResponse(createResponse, "Failed to create retailer");
-
-      // If creation failed due to conflict, try to find the existing one again
-      if (!newRetailer || !newRetailer.id) {
-        const retryRetailer = await this.findRetailer(name, website);
-        if (retryRetailer) {
-          return retryRetailer;
-        }
-      }
-
       return Array.isArray(newRetailer) ? newRetailer[0] : newRetailer;
     } catch (error) {
       console.error("Error in getOrCreateRetailer:", error);
@@ -203,19 +194,20 @@ class DatabaseHandler {
     try {
       console.log("Saving product data:", JSON.stringify(productData, null, 2));
 
-      // Determine if this is modal data by checking for ingredients
       const isModalView = "ingredients" in productData;
-
-      // Validate the data first
       const validation = validateModalData(productData, isModalView);
+
       if (!validation.isValid) {
         throw new Error(`Invalid product data: ${validation.errors.join(", ")}`);
       }
 
+      // Extract product info using normalized name
+      const { brand, baseName } = this.extractProductInfo(productData.name);
+
       // Step 1: Find or create product group
       const productGroup = await this.findOrCreateProductGroup({
-        brand: productData.brand || "",
-        baseName: productData.baseName || productData.name,
+        brand,
+        baseName,
       });
 
       if (!productGroup) {
@@ -230,6 +222,7 @@ class DatabaseHandler {
         name: productData.name,
         baseUnit: productData.baseUnit,
         size: productData.size,
+        nutrition: productData.nutrition,
       });
 
       if (!product) {
@@ -259,12 +252,6 @@ class DatabaseHandler {
       if (productData.ingredients) {
         await this.saveIngredients(productGroup.id, productData.ingredients);
         console.log("Ingredients saved successfully");
-      }
-
-      // Step 5: Save attributes if provided
-      if (productData.attributes?.length > 0) {
-        await this.saveAttributes(product.id, productData.retailerId, productData.attributes);
-        console.log("Attributes saved successfully");
       }
 
       return {
@@ -304,7 +291,7 @@ class DatabaseHandler {
         return existingGroups[0];
       }
 
-      // If not found, create new product group with ON CONFLICT DO NOTHING
+      // If not found, create new product group
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
         method: "POST",
         headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
@@ -317,26 +304,6 @@ class DatabaseHandler {
       });
 
       const newGroup = await this.handleResponse(createResponse, "Failed to create product group");
-
-      // If creation failed due to conflict, try to find the existing one again
-      if (!newGroup || !newGroup.id) {
-        const retryResponse = await fetch(
-          `${this.supabaseUrl}/rest/v1/product_groups?brand=eq.${encodeURIComponent(
-            brand
-          )}&base_name=eq.${encodeURIComponent(baseName)}`,
-          {
-            headers: this.getHeaders(),
-          }
-        );
-
-        const retryGroups = await this.handleResponse(retryResponse, "Failed to retry search for product group");
-        if (retryGroups && retryGroups.length > 0) {
-          console.log("Found product group after conflict:", retryGroups[0]);
-          return retryGroups[0];
-        }
-      }
-
-      console.log("Created new product group:", newGroup);
       return Array.isArray(newGroup) ? newGroup[0] : newGroup;
     } catch (error) {
       console.error("Error in findOrCreateProductGroup:", error);
@@ -344,17 +311,13 @@ class DatabaseHandler {
     }
   }
 
-  async findOrCreateProduct({ productGroupId, name, baseUnit, size }) {
+  async findOrCreateProduct({ productGroupId, name, baseUnit, size, nutrition }) {
     try {
-      // Validate required fields
-      if (!productGroupId) {
-        throw new Error("Product group ID is required");
-      }
-      if (!name || name.trim() === "") {
-        throw new Error("Product name is required");
+      if (!productGroupId || !name || name.trim() === "") {
+        throw new Error("Product group ID and name are required");
       }
 
-      console.log("Finding/creating product:", { productGroupId, name, baseUnit, size });
+      console.log("Finding/creating product:", { productGroupId, name, baseUnit, size, nutrition });
 
       // First try to find existing product
       const searchResponse = await fetch(
@@ -370,13 +333,18 @@ class DatabaseHandler {
 
       if (existingProducts && existingProducts.length > 0) {
         // Update existing product if needed
-        if (existingProducts[0].base_unit !== baseUnit || existingProducts[0].size !== size) {
+        if (
+          existingProducts[0].base_unit !== baseUnit ||
+          existingProducts[0].size !== size ||
+          JSON.stringify(existingProducts[0].nutrition) !== JSON.stringify(nutrition)
+        ) {
           const updateResponse = await fetch(`${this.supabaseUrl}/rest/v1/products?id=eq.${existingProducts[0].id}`, {
             method: "PATCH",
             headers: this.getHeaders("return=representation"),
             body: JSON.stringify({
               base_unit: baseUnit,
               size: size,
+              nutrition: nutrition,
               updated_at: new Date().toISOString(),
             }),
           });
@@ -386,7 +354,7 @@ class DatabaseHandler {
         return existingProducts[0];
       }
 
-      // If not found, create new product with ON CONFLICT DO NOTHING
+      // If not found, create new product
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/products`, {
         method: "POST",
         headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
@@ -395,32 +363,13 @@ class DatabaseHandler {
           name,
           base_unit: baseUnit,
           size: size,
+          nutrition: nutrition,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }),
       });
 
       const newProduct = await this.handleResponse(createResponse, "Failed to create product");
-
-      // If creation failed due to conflict, try to find the existing one again
-      if (!newProduct || !newProduct.id) {
-        const retryResponse = await fetch(
-          `${this.supabaseUrl}/rest/v1/products?product_group_id=eq.${productGroupId}&name=eq.${encodeURIComponent(
-            name
-          )}`,
-          {
-            headers: this.getHeaders(),
-          }
-        );
-
-        const retryProducts = await this.handleResponse(retryResponse, "Failed to retry search for product");
-        if (retryProducts && retryProducts.length > 0) {
-          console.log("Found product after conflict:", retryProducts[0]);
-          return retryProducts[0];
-        }
-      }
-
-      console.log("Created new product:", newProduct);
       return Array.isArray(newProduct) ? newProduct[0] : newProduct;
     } catch (error) {
       console.error("Error in findOrCreateProduct:", error);
@@ -440,7 +389,7 @@ class DatabaseHandler {
         imageUrl,
       });
 
-      // First, try to find existing listing by both retailer_id and external_id
+      // First, try to find existing listing
       const searchResponse = await fetch(
         `${this.supabaseUrl}/rest/v1/product_listings?retailer_id=eq.${retailerId}&external_id=eq.${encodeURIComponent(
           externalId
@@ -475,7 +424,7 @@ class DatabaseHandler {
         return Array.isArray(data) ? data[0] : data;
       }
 
-      // If not found, create new listing with ON CONFLICT DO NOTHING
+      // If not found, create new listing
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_listings`, {
         method: "POST",
         headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
@@ -494,26 +443,6 @@ class DatabaseHandler {
       });
 
       const newListing = await this.handleResponse(createResponse, "Failed to create product listing");
-
-      // If creation failed due to conflict, try to find the existing one again
-      if (!newListing || !newListing.id) {
-        const retryResponse = await fetch(
-          `${
-            this.supabaseUrl
-          }/rest/v1/product_listings?retailer_id=eq.${retailerId}&external_id=eq.${encodeURIComponent(externalId)}`,
-          {
-            headers: this.getHeaders(),
-          }
-        );
-
-        const retryListings = await this.handleResponse(retryResponse, "Failed to retry search for product listing");
-        if (retryListings && retryListings.length > 0) {
-          console.log("Found product listing after conflict:", retryListings[0]);
-          return retryListings[0];
-        }
-      }
-
-      console.log("Created new product listing:", newListing);
       return Array.isArray(newListing) ? newListing[0] : newListing;
     } catch (error) {
       console.error("Error in upsertProductListing:", error);
@@ -527,7 +456,7 @@ class DatabaseHandler {
 
       // First, mark existing ingredients as not current
       const updateResponse = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}`,
+        `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}&is_current=eq.true`,
         {
           method: "PATCH",
           headers: this.getHeaders("return=representation"),
@@ -537,7 +466,7 @@ class DatabaseHandler {
 
       await this.handleResponse(updateResponse, "Failed to update existing ingredients");
 
-      // Then insert new ingredients with ON CONFLICT DO NOTHING
+      // Then insert new ingredients
       const insertResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients`, {
         method: "POST",
         headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
@@ -554,48 +483,6 @@ class DatabaseHandler {
       return await this.handleResponse(insertResponse, "Failed to save ingredients");
     } catch (error) {
       console.error("Error in saveIngredients:", error);
-      throw error;
-    }
-  }
-
-  async saveAttributes(productId, retailerId, attributes) {
-    try {
-      console.log("Saving attributes:", { productId, retailerId, attributes });
-
-      // Mark existing attributes as not current
-      const updateResponse = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_attributes?product_id=eq.${productId}&retailer_id=eq.${retailerId}`,
-        {
-          method: "PATCH",
-          headers: this.getHeaders("return=representation"),
-          body: JSON.stringify({ is_current: false }),
-        }
-      );
-
-      await this.handleResponse(updateResponse, "Failed to update existing attributes");
-
-      // Insert new attributes with ON CONFLICT DO NOTHING
-      for (const attr of attributes) {
-        const insertResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_attributes`, {
-          method: "POST",
-          headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
-          body: JSON.stringify({
-            product_id: productId,
-            retailer_id: retailerId,
-            key: attr.key,
-            value: attr.value,
-            is_current: true,
-            found_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-          }),
-        });
-
-        await this.handleResponse(insertResponse, `Failed to save attribute ${attr.key}`);
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error("Error in saveAttributes:", error);
       throw error;
     }
   }
@@ -619,30 +506,11 @@ class DatabaseHandler {
     }
   }
 
-  async getProductAttributes(productId, retailerId) {
-    try {
-      console.log("Getting product attributes:", { productId, retailerId });
-
-      const response = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_attributes?product_id=eq.${productId}&retailer_id=eq.${retailerId}&is_current=eq.true`,
-        {
-          headers: this.getHeaders(),
-        }
-      );
-
-      return await this.handleResponse(response, "Failed to fetch attributes");
-    } catch (error) {
-      console.error("Error in getProductAttributes:", error);
-      throw error;
-    }
-  }
-
   async testModalDataProcessing(modalData) {
     console.log("Testing modal data processing...");
     console.log("Input data:", JSON.stringify(modalData, null, 2));
 
-    // Validate the data
-    const validation = validateModalData(modalData, true); // Pass true to indicate modal view
+    const validation = validateModalData(modalData, true);
 
     if (!validation.isValid) {
       console.error("Validation failed:", validation.errors);

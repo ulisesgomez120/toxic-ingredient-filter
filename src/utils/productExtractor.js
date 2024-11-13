@@ -212,6 +212,7 @@ function getImageUrl(element) {
   return img.getAttribute("src") || "";
 }
 
+// Updated to only include non-nutrition attributes
 function getAttributes(element) {
   const attributes = [];
 
@@ -262,7 +263,7 @@ function extractNutritionalValue(text, label) {
 
   // Match number followed by optional unit (g, mg, %) and optional daily value
   const match = valueText.match(/(\d+(?:\.\d+)?)\s*(?:g|mg)?/);
-  return match ? match[1] : null;
+  return match ? parseFloat(match[1]) : null;
 }
 
 // Helper functions for modal extraction
@@ -314,7 +315,7 @@ function getModalUrlPath() {
   return url.pathname + url.search;
 }
 
-// Modal extraction function
+// Updated modal extraction function to handle nutrition as a separate object
 async function extractProductFromModal(modalContent, listData = null) {
   try {
     // Get retailer ID if no list data provided
@@ -338,23 +339,32 @@ async function extractProductFromModal(modalContent, listData = null) {
 
     // Get nutritional information using updated class
     const nutritionSection = modalContent.querySelector(".e-kdmqsz");
-    const attributes = [];
-    const processedKeys = new Set(); // Track which keys we've already processed
+    let nutrition = null;
 
     if (nutritionSection) {
+      nutrition = {
+        serving_size: null,
+        calories: null,
+        total_fat: null,
+        saturated_fat: null,
+        trans_fat: null,
+        polyunsaturated_fat: null,
+        monounsaturated_fat: null,
+        cholesterol: null,
+        sodium: null,
+        total_carbohydrate: null,
+        dietary_fiber: null,
+        total_sugars: null,
+        added_sugars: null,
+        protein: null,
+      };
+
       // Extract serving size
       const servingSize = nutritionSection.querySelector(".e-78jcqk")?.textContent;
       if (servingSize) {
         const parsedSize = parseServingSize(servingSize);
         if (parsedSize) {
-          attributes.push({
-            key: "serving_size_amount",
-            value: parsedSize.amount.toString(),
-          });
-          attributes.push({
-            key: "serving_size_unit",
-            value: parsedSize.unit,
-          });
+          nutrition.serving_size = parsedSize;
         }
       }
 
@@ -363,10 +373,7 @@ async function extractProductFromModal(modalContent, listData = null) {
       if (calories) {
         const caloriesValue = calories.match(/\d+/)?.[0];
         if (caloriesValue) {
-          attributes.push({
-            key: "calories",
-            value: caloriesValue,
-          });
+          nutrition.calories = parseInt(caloriesValue, 10);
         }
       }
 
@@ -397,11 +404,10 @@ async function extractProductFromModal(modalContent, listData = null) {
 
         // Try to match each nutrition fact
         for (const { label, key } of nutritionFacts) {
-          if (text.includes(label) && !processedKeys.has(key)) {
+          if (text.includes(label)) {
             const value = extractNutritionalValue(text, label);
-            if (value) {
-              attributes.push({ key, value });
-              processedKeys.add(key); // Mark this key as processed
+            if (value !== null) {
+              nutrition[key] = value;
             }
             break;
           }
@@ -409,11 +415,36 @@ async function extractProductFromModal(modalContent, listData = null) {
       }
     }
 
+    // Get non-nutrition attributes
+    const attributes = [];
+
+    // Extract rating if exists
+    const ratingElement = modalContent.querySelector(".e-8k1832");
+    if (ratingElement) {
+      const ratingText = ratingElement.parentElement?.textContent;
+      if (ratingText) {
+        attributes.push({
+          key: "rating",
+          value: ratingText.trim(),
+        });
+      }
+    }
+
+    // Extract review count if exists
+    const reviewElement = modalContent.querySelector(".e-6sv5ld");
+    if (reviewElement) {
+      attributes.push({
+        key: "review_count",
+        value: reviewElement.textContent.replace(/[()]/g, "").trim(),
+      });
+    }
+
     // Merge with list data if provided, otherwise extract required fields from modal
     if (listData) {
       return {
         ...listData,
         ingredients,
+        nutrition,
         attributes: [...(listData.attributes || []), ...attributes],
       };
     }
@@ -429,6 +460,7 @@ async function extractProductFromModal(modalContent, listData = null) {
       url_path,
       retailerId,
       ingredients,
+      nutrition,
       attributes,
     };
   } catch (error) {
