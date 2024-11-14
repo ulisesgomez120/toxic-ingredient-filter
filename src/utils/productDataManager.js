@@ -107,11 +107,11 @@ export class ProductDataManager {
               imageUrl: productData.image_url,
               baseUnit: productData.base_unit,
               size: productData.size,
-              attributes:
-                productData.attributes?.map((attr) => ({
-                  key: attr.key,
-                  value: String(attr.value),
-                })) || [],
+              // attributes:
+              //   productData.attributes?.map((attr) => ({
+              //     key: attr.key,
+              //     value: String(attr.value),
+              //   })) || [],
             };
 
             // Try to find existing product group

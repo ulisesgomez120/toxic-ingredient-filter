@@ -1,5 +1,6 @@
 // src/utils/databaseHandler.js
 
+import { normalizeProductName, extractProductInfo, checkBrandMatch, checkBaseNameMatch } from "./productNameUtils";
 // Validation function to check modal data completeness
 const validateModalData = (modalData, isModalView = false) => {
   const requiredFields = {
@@ -79,7 +80,6 @@ const validateModalData = (modalData, isModalView = false) => {
 
 class DatabaseHandler {
   constructor() {
-    // Access environment variables through webpack's process.env
     this.supabaseUrl = process.env.SUPABASE_URL;
     this.supabaseKey = process.env.SUPABASE_KEY;
 
@@ -91,28 +91,50 @@ class DatabaseHandler {
     }
   }
 
-  // Normalize product name for better matching
-  normalizeProductName(name) {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "") // Remove special characters
-      .replace(/\s+/g, " ") // Normalize spaces
-      .trim();
-  }
+  async findOrCreateProductGroup(productInfo) {
+    try {
+      if (!productInfo.baseName || productInfo.baseName.trim() === "") {
+        throw new Error("Base name is required for product group");
+      }
 
-  // Extract brand and base name from product name
-  extractProductInfo(name) {
-    const normalized = this.normalizeProductName(name);
-    const parts = normalized.split(" ");
+      console.log("Finding/creating product group:", productInfo);
 
-    // Assume first word is brand if it's a known brand
-    const knownBrands = ["doritos", "tostitos", "lindt", "ghirardelli", "bugles", "minute", "tree"];
-    const brand = knownBrands.find((b) => parts[0].includes(b)) || "";
+      const normalizedBrand = normalizeProductName(productInfo.brand);
+      const normalizedBaseName = normalizeProductName(productInfo.baseName);
 
-    // Remove brand from base name if found
-    const baseName = brand ? normalized.replace(brand, "").trim() : normalized;
+      // Search using only normalized base name
+      const searchResponse = await fetch(
+        `${this.supabaseUrl}/rest/v1/product_groups?normalized_base_name=eq.${encodeURIComponent(normalizedBaseName)}`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
 
-    return { brand, baseName };
+      const existingGroups = await this.handleResponse(searchResponse, "Failed to search for product group");
+
+      if (existingGroups && existingGroups.length > 0) {
+        console.log("Found existing product group:", existingGroups[0]);
+        return existingGroups[0];
+      }
+
+      // If not found, create new product group
+      const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
+        method: "POST",
+        headers: this.getHeaders("return=representation"),
+        body: JSON.stringify({
+          brand: productInfo.brand, // Keep original brand
+          base_name: productInfo.baseName, // Keep original base name
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }),
+      });
+
+      const newGroup = await this.handleResponse(createResponse, "Failed to create product group");
+      return Array.isArray(newGroup) ? newGroup[0] : newGroup;
+    } catch (error) {
+      console.error("Error in findOrCreateProductGroup:", error);
+      throw error;
+    }
   }
 
   async handleResponse(response, errorMessage) {
@@ -172,7 +194,7 @@ class DatabaseHandler {
 
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/retailers`, {
         method: "POST",
-        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
+        headers: this.getHeaders("return=representation"),
         body: JSON.stringify({
           name,
           website,
@@ -202,13 +224,10 @@ class DatabaseHandler {
       }
 
       // Extract product info using normalized name
-      const { brand, baseName } = this.extractProductInfo(productData.name);
-
+      const productInfo = extractProductInfo(productData.name);
+      console.log("here", productInfo);
       // Step 1: Find or create product group
-      const productGroup = await this.findOrCreateProductGroup({
-        brand,
-        baseName,
-      });
+      const productGroup = await this.findOrCreateProductGroup(productInfo);
 
       if (!productGroup) {
         throw new Error("Failed to create product group");
@@ -266,51 +285,6 @@ class DatabaseHandler {
     }
   }
 
-  async findOrCreateProductGroup({ brand, baseName }) {
-    try {
-      if (!baseName || baseName.trim() === "") {
-        throw new Error("Base name is required for product group");
-      }
-
-      console.log("Finding/creating product group:", { brand, baseName });
-
-      // First try to find existing product group with exact match
-      const searchResponse = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_groups?brand=eq.${encodeURIComponent(
-          brand
-        )}&base_name=eq.${encodeURIComponent(baseName)}`,
-        {
-          headers: this.getHeaders(),
-        }
-      );
-
-      const existingGroups = await this.handleResponse(searchResponse, "Failed to search for product group");
-
-      if (existingGroups && existingGroups.length > 0) {
-        console.log("Found existing product group:", existingGroups[0]);
-        return existingGroups[0];
-      }
-
-      // If not found, create new product group
-      const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
-        method: "POST",
-        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
-        body: JSON.stringify({
-          brand,
-          base_name: baseName,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }),
-      });
-
-      const newGroup = await this.handleResponse(createResponse, "Failed to create product group");
-      return Array.isArray(newGroup) ? newGroup[0] : newGroup;
-    } catch (error) {
-      console.error("Error in findOrCreateProductGroup:", error);
-      throw error;
-    }
-  }
-
   async findOrCreateProduct({ productGroupId, name, baseUnit, size, nutrition }) {
     try {
       if (!productGroupId || !name || name.trim() === "") {
@@ -357,7 +331,7 @@ class DatabaseHandler {
       // If not found, create new product
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/products`, {
         method: "POST",
-        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
+        headers: this.getHeaders("return=representation"),
         body: JSON.stringify({
           product_group_id: productGroupId,
           name,
@@ -427,7 +401,7 @@ class DatabaseHandler {
       // If not found, create new listing
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_listings`, {
         method: "POST",
-        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
+        headers: this.getHeaders("return=representation"),
         body: JSON.stringify({
           product_id: productId,
           retailer_id: retailerId,
@@ -469,7 +443,7 @@ class DatabaseHandler {
       // Then insert new ingredients
       const insertResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients`, {
         method: "POST",
-        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
+        headers: this.getHeaders("return=representation"),
         body: JSON.stringify({
           product_group_id: productGroupId,
           ingredients,

@@ -21,7 +21,7 @@ async function extractProductFromList(listItem) {
       ...getPriceInfo(listItem),
       ...sizeInfo,
       image_url: getImageUrl(listItem),
-      attributes: getAttributes(listItem),
+      // attributes: getAttributes(listItem),
     };
   } catch (error) {
     console.error("Error extracting product from list:", error);
@@ -66,10 +66,8 @@ function extractBrandFromName(name) {
   // If no clear separator or pattern, try to extract first 2-3 words as brand
   // but only if they look like a brand (capitalized words)
   const potentialBrandWords = words.slice(0, 3);
-  const isBrandWord = (word) => /^[A-Z]/.test(word) && word.length > 1;
-  const brandCandidates = potentialBrandWords.filter(isBrandWord);
-  if (brandCandidates.length >= 1) {
-    return brandCandidates.join(" ");
+  if (potentialBrandWords.length >= 1) {
+    return potentialBrandWords.join(" ");
   }
 
   return "";
@@ -213,32 +211,32 @@ function getImageUrl(element) {
 }
 
 // Updated to only include non-nutrition attributes
-function getAttributes(element) {
-  const attributes = [];
+// function getAttributes(element) {
+//   const attributes = [];
 
-  // Extract rating if exists
-  const ratingElement = element.querySelector(".e-8k1832");
-  if (ratingElement) {
-    const ratingText = ratingElement.parentElement?.textContent;
-    if (ratingText) {
-      attributes.push({
-        key: "rating",
-        value: ratingText.trim(),
-      });
-    }
-  }
+//   // Extract rating if exists
+//   const ratingElement = element.querySelector(".e-8k1832");
+//   if (ratingElement) {
+//     const ratingText = ratingElement.parentElement?.textContent;
+//     if (ratingText) {
+//       attributes.push({
+//         key: "rating",
+//         value: ratingText.trim(),
+//       });
+//     }
+//   }
 
-  // Extract review count if exists
-  const reviewElement = element.querySelector(".e-6sv5ld");
-  if (reviewElement) {
-    attributes.push({
-      key: "review_count",
-      value: reviewElement.textContent.replace(/[()]/g, "").trim(),
-    });
-  }
+//   // Extract review count if exists
+//   const reviewElement = element.querySelector(".e-6sv5ld");
+//   if (reviewElement) {
+//     attributes.push({
+//       key: "review_count",
+//       value: reviewElement.textContent.replace(/[()]/g, "").trim(),
+//     });
+//   }
 
-  return attributes;
-}
+//   return attributes;
+// }
 
 function parseServingSize(servingSizeText) {
   if (!servingSizeText) return null;
@@ -415,29 +413,29 @@ async function extractProductFromModal(modalContent, listData = null) {
       }
     }
 
-    // Get non-nutrition attributes
-    const attributes = [];
+    // // Get non-nutrition attributes
+    // const attributes = [];
 
-    // Extract rating if exists
-    const ratingElement = modalContent.querySelector(".e-8k1832");
-    if (ratingElement) {
-      const ratingText = ratingElement.parentElement?.textContent;
-      if (ratingText) {
-        attributes.push({
-          key: "rating",
-          value: ratingText.trim(),
-        });
-      }
-    }
+    // // Extract rating if exists
+    // const ratingElement = modalContent.querySelector(".e-8k1832");
+    // if (ratingElement) {
+    //   const ratingText = ratingElement.parentElement?.textContent;
+    //   if (ratingText) {
+    //     attributes.push({
+    //       key: "rating",
+    //       value: ratingText.trim(),
+    //     });
+    //   }
+    // }
 
-    // Extract review count if exists
-    const reviewElement = modalContent.querySelector(".e-6sv5ld");
-    if (reviewElement) {
-      attributes.push({
-        key: "review_count",
-        value: reviewElement.textContent.replace(/[()]/g, "").trim(),
-      });
-    }
+    // // Extract review count if exists
+    // const reviewElement = modalContent.querySelector(".e-6sv5ld");
+    // if (reviewElement) {
+    //   attributes.push({
+    //     key: "review_count",
+    //     value: reviewElement.textContent.replace(/[()]/g, "").trim(),
+    //   });
+    // }
 
     // Merge with list data if provided, otherwise extract required fields from modal
     if (listData) {
@@ -445,7 +443,7 @@ async function extractProductFromModal(modalContent, listData = null) {
         ...listData,
         ingredients,
         nutrition,
-        attributes: [...(listData.attributes || []), ...attributes],
+        // attributes: [...(listData.attributes || []), ...attributes],
       };
     }
 
@@ -461,7 +459,7 @@ async function extractProductFromModal(modalContent, listData = null) {
       retailerId,
       ingredients,
       nutrition,
-      attributes,
+      // attributes,
     };
   } catch (error) {
     console.error("Error extracting product from modal:", error);

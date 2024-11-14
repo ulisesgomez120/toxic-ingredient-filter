@@ -245,11 +245,11 @@ class ProductScanner {
       imageUrl: rawData.image_url,
       baseUnit: rawData.base_unit,
       size: rawData.size,
-      attributes:
-        rawData.attributes?.map((attr) => ({
-          key: attr.key,
-          value: String(attr.value), // Ensure value is a string
-        })) || [],
+      // attributes:
+      //   rawData.attributes?.map((attr) => ({
+      //     key: attr.key,
+      //     value: String(attr.value), // Ensure value is a string
+      //   })) || [],
     };
   }
 }

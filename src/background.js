@@ -3,7 +3,6 @@
 class BackgroundService {
   constructor() {
     this.setupListeners();
-    this.initializeCache();
   }
 
   setupListeners() {
