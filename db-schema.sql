@@ -36,7 +36,6 @@ CREATE TABLE products (
     UNIQUE(product_group_id, name)
 );
 
--- Shared ingredients at product group level with versioning
 CREATE TABLE product_group_ingredients (
     id SERIAL PRIMARY KEY,
     product_group_id INTEGER REFERENCES product_groups(id),
@@ -46,8 +45,27 @@ CREATE TABLE product_group_ingredients (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     verification_count INTEGER DEFAULT 1,
     -- Add hash column to detect duplicate ingredients
-    ingredients_hash VARCHAR(64) GENERATED ALWAYS AS (encode(sha256(ingredients::bytea), 'hex')) STORED
+    ingredients_hash VARCHAR(64) GENERATED ALWAYS AS (encode(sha256(ingredients::bytea), 'hex')) STORED,
+    -- New toxin flags column
+    toxin_flags JSONB
 );
+
+-- Create a partial unique index instead of the WHERE clause in UNIQUE constraint
+CREATE UNIQUE INDEX idx_product_group_ingredients_unique_current 
+ON product_group_ingredients (product_group_id, ingredients_hash) 
+WHERE is_current = true;
+
+
+
+COMMENT ON COLUMN product_group_ingredients.toxin_flags IS 
+'JSONB array of toxin information found in ingredients. Format: 
+[{
+    "name": "toxin name",
+    "category": "toxin category",
+    "concernLevel": "high/moderate/low",
+    "healthEffects": ["effect1", "effect2"],
+    "aliases": ["alias1", "alias2"]
+}]';
 
 -- Create a partial unique index instead of the WHERE clause in UNIQUE constraint
 CREATE UNIQUE INDEX idx_product_group_ingredients_unique_current 
@@ -85,6 +103,6 @@ CREATE INDEX idx_product_listings_external ON product_listings(retailer_id, exte
 CREATE INDEX idx_product_listings_url ON product_listings(retailer_id, url_path);
 CREATE INDEX idx_product_group_ingredients_current ON product_group_ingredients(product_group_id, is_current);
 CREATE INDEX idx_product_group_ingredients_hash ON product_group_ingredients(ingredients_hash) WHERE is_current = true;
-
+CREATE INDEX idx_product_group_ingredients_toxin_flags ON product_group_ingredients USING gin (toxin_flags);
 -- Initial retailer data for Instacart/Walmart
 INSERT INTO retailers (name, website) VALUES ('Walmart', 'instacart');
