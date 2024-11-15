@@ -1,9 +1,10 @@
 import DatabaseHandler from "./databaseHandler";
+import ProductCacheManager from "./productCacheManager";
 
 export class ProductDataManager {
   constructor() {
     this.dbHandler = new DatabaseHandler();
-    this.cache = new Map(); // Cache for ingredient data
+    this.cacheManager = new ProductCacheManager();
     this.pendingRequests = new Map(); // Track pending requests to avoid duplicates
     this.batchSize = 10; // Number of products to process in one batch
     this.batchDelay = 500; // Delay between batches in ms
@@ -16,12 +17,12 @@ export class ProductDataManager {
    * @param {Object} productData Basic product data from list
    * @param {Function} callback Callback to run when data is ready
    */
-  queueProduct(productData, callback) {
+  async queueProduct(productData, callback) {
     const productId = productData.external_id;
 
-    // If we already have the data cached, use it immediately
-    if (this.cache.has(productId)) {
-      callback(this.cache.get(productId));
+    const cachedProduct = await this.cacheManager.getProduct(productId);
+    if (cachedProduct) {
+      callback(cachedProduct);
       return;
     }
 
@@ -70,12 +71,10 @@ export class ProductDataManager {
     console.log(`Processing batch of ${batch.length} products`);
 
     try {
-      // Process products in smaller chunks to avoid overwhelming the system
       for (let i = 0; i < batch.length; i += this.batchSize) {
         const chunk = batch.slice(i, i + this.batchSize);
         await this.processChunk(chunk);
 
-        // Small delay between chunks if there are more to process
         if (i + this.batchSize < batch.length) {
           await new Promise((resolve) => setTimeout(resolve, 100));
         }
@@ -84,35 +83,16 @@ export class ProductDataManager {
       console.error("Error processing batch:", error);
     }
   }
-
   /**
    * Process a chunk of products
    */
   async processChunk(chunk) {
     try {
-      // First try to get data from database
-      const dbResults = await Promise.all(
+      const results = await Promise.all(
         chunk.map(async ({ productId, productData }) => {
           try {
             // Format data for database
-            const formattedData = {
-              brand: productData.brand || "",
-              baseName: productData.name,
-              name: productData.name,
-              retailerId: productData.retailerId,
-              externalId: productData.external_id,
-              urlPath: productData.url_path,
-              priceAmount: productData.price_amount,
-              priceUnit: productData.price_unit,
-              imageUrl: productData.image_url,
-              baseUnit: productData.base_unit,
-              size: productData.size,
-              // attributes:
-              //   productData.attributes?.map((attr) => ({
-              //     key: attr.key,
-              //     value: String(attr.value),
-              //   })) || [],
-            };
+            const formattedData = this.formatProductData(productData);
 
             // Try to find existing product group
             const productGroup = await this.dbHandler.findOrCreateProductGroup({
@@ -121,38 +101,60 @@ export class ProductDataManager {
             });
 
             if (productGroup) {
-              // Get ingredients for this product group
+              // Save product group to cache
+              await this.cacheManager.saveProductGroup(productGroup);
+
+              // Get ingredients
               const ingredients = await this.dbHandler.getProductIngredients(productGroup.id);
+
               if (ingredients) {
-                return {
+                // Save ingredients to cache
+                await this.cacheManager.saveIngredients(productGroup.id, ingredients);
+
+                const enrichedProduct = {
                   ...productData,
                   ingredients,
                 };
+
+                // Save complete product data to cache
+                await this.cacheManager.saveProduct(enrichedProduct);
+
+                return enrichedProduct;
               }
             }
             return null;
           } catch (error) {
-            console.error("Error getting data from database:", error);
+            console.error("Error processing product:", error);
             return null;
           }
         })
       );
 
-      // Process each product in the chunk
+      // Execute callbacks for processed products
       for (let i = 0; i < chunk.length; i++) {
-        const { productId, productData } = chunk[i];
-        const dbData = dbResults[i];
-
-        if (dbData && dbData.ingredients) {
-          // We have data in the database
-          this.handleProductData(productId, dbData);
-        }
+        const { productId } = chunk[i];
+        const productData = results[i];
+        this.executeCallbacks(productId, productData);
       }
     } catch (error) {
       console.error("Error processing chunk:", error);
     }
   }
-
+  formatProductData(productData) {
+    return {
+      brand: productData.brand || "",
+      baseName: productData.name,
+      name: productData.name,
+      retailerId: productData.retailerId,
+      externalId: productData.external_id,
+      urlPath: productData.url_path,
+      priceAmount: productData.priceAmount,
+      priceUnit: productData.priceUnit,
+      imageUrl: productData.image_url,
+      baseUnit: productData.baseUnit,
+      size: productData.size,
+    };
+  }
   /**
    * Handle product data once we have it
    */
@@ -184,9 +186,9 @@ export class ProductDataManager {
    */
   clearCache(productId = null) {
     if (productId) {
-      this.cache.delete(productId);
+      this.cacheManager.memoryCache.delete(productId);
     } else {
-      this.cache.clear();
+      this.cacheManager.cleanupCache();
     }
   }
 }
