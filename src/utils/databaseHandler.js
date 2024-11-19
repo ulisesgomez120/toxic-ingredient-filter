@@ -1,6 +1,8 @@
 // src/utils/databaseHandler.js
 
 import { normalizeProductName, extractProductInfo, checkBrandMatch, checkBaseNameMatch } from "./productNameUtils";
+import { OverlayManager } from "./overlayManager"; // Import OverlayManager
+
 // Validation function to check modal data completeness
 const validateModalData = (modalData, isModalView = false) => {
   const requiredFields = {
@@ -82,6 +84,7 @@ class DatabaseHandler {
   constructor() {
     this.supabaseUrl = process.env.SUPABASE_URL;
     this.supabaseKey = process.env.SUPABASE_KEY;
+    this.overlayManager = new OverlayManager(); // Create an instance of OverlayManager
 
     if (!this.supabaseUrl || !this.supabaseKey) {
       console.error("Database configuration missing. Using environment variables:", {
@@ -97,8 +100,6 @@ class DatabaseHandler {
         throw new Error("Base name is required for product group");
       }
 
-      console.log("Finding/creating product group:", productInfo);
-
       const normalizedBrand = normalizeProductName(productInfo.brand);
       const normalizedBaseName = normalizeProductName(productInfo.baseName);
 
@@ -113,7 +114,6 @@ class DatabaseHandler {
       const existingGroups = await this.handleResponse(searchResponse, "Failed to search for product group");
 
       if (existingGroups && existingGroups.length > 0) {
-        console.log("Found existing product group:", existingGroups[0]);
         return existingGroups[0];
       }
 
@@ -166,8 +166,6 @@ class DatabaseHandler {
 
   async findRetailer(name, website) {
     try {
-      console.log("Finding retailer:", { name, website });
-
       const response = await fetch(
         `${this.supabaseUrl}/rest/v1/retailers?name=eq.${encodeURIComponent(name)}&website=eq.${encodeURIComponent(
           website
@@ -214,8 +212,6 @@ class DatabaseHandler {
 
   async saveProductListing(productData) {
     try {
-      console.log("Saving product data:", JSON.stringify(productData, null, 2));
-
       const isModalView = "ingredients" in productData;
       const validation = validateModalData(productData, isModalView);
 
@@ -225,15 +221,12 @@ class DatabaseHandler {
 
       // Extract product info using normalized name
       const productInfo = extractProductInfo(productData.name);
-      console.log("here", productInfo);
       // Step 1: Find or create product group
       const productGroup = await this.findOrCreateProductGroup(productInfo);
 
       if (!productGroup) {
         throw new Error("Failed to create product group");
       }
-
-      console.log("Product group created/found:", productGroup);
 
       // Step 2: Find or create product variant
       const product = await this.findOrCreateProduct({
@@ -247,8 +240,6 @@ class DatabaseHandler {
       if (!product) {
         throw new Error("Failed to create product");
       }
-
-      console.log("Product variant created/found:", product);
 
       // Step 3: Create/update product listing
       const listing = await this.upsertProductListing({
@@ -265,12 +256,11 @@ class DatabaseHandler {
         throw new Error("Failed to create/update product listing");
       }
 
-      console.log("Product listing created/updated:", listing);
-
       // Step 4: Save ingredients if provided
       if (productData.ingredients) {
-        await this.saveIngredients(productGroup.id, productData.ingredients);
-        console.log("Ingredients saved successfully");
+        // Find toxic ingredients using OverlayManager
+        const toxinFlags = this.overlayManager.findToxicIngredients(productData.ingredients);
+        await this.saveIngredients(productGroup.id, productData.ingredients, toxinFlags.length > 0 ? toxinFlags : null);
       }
 
       return {
@@ -290,8 +280,6 @@ class DatabaseHandler {
       if (!productGroupId || !name || name.trim() === "") {
         throw new Error("Product group ID and name are required");
       }
-
-      console.log("Finding/creating product:", { productGroupId, name, baseUnit, size, nutrition });
 
       // First try to find existing product
       const searchResponse = await fetch(
@@ -353,16 +341,6 @@ class DatabaseHandler {
 
   async upsertProductListing({ productId, retailerId, externalId, urlPath, priceAmount, priceUnit, imageUrl }) {
     try {
-      console.log("Upserting product listing:", {
-        productId,
-        retailerId,
-        externalId,
-        urlPath,
-        priceAmount,
-        priceUnit,
-        imageUrl,
-      });
-
       // First, try to find existing listing
       const searchResponse = await fetch(
         `${this.supabaseUrl}/rest/v1/product_listings?retailer_id=eq.${retailerId}&external_id=eq.${encodeURIComponent(
@@ -424,10 +402,8 @@ class DatabaseHandler {
     }
   }
 
-  async saveIngredients(productGroupId, ingredients) {
+  async saveIngredients(productGroupId, ingredients, toxinFlags = null) {
     try {
-      console.log("Saving ingredients:", { productGroupId, ingredients });
-
       // First, mark existing ingredients as not current
       const updateResponse = await fetch(
         `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}&is_current=eq.true`,
@@ -440,18 +416,26 @@ class DatabaseHandler {
 
       await this.handleResponse(updateResponse, "Failed to update existing ingredients");
 
+      // Prepare the data to insert
+      const insertData = {
+        product_group_id: productGroupId,
+        ingredients,
+        is_current: true,
+        verification_count: 1,
+        found_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      };
+
+      // Add toxin flags if provided
+      if (toxinFlags && toxinFlags.length > 0) {
+        insertData.toxin_flags = toxinFlags;
+      }
+
       // Then insert new ingredients
       const insertResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients`, {
         method: "POST",
         headers: this.getHeaders("return=representation"),
-        body: JSON.stringify({
-          product_group_id: productGroupId,
-          ingredients,
-          is_current: true,
-          verification_count: 1,
-          found_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        }),
+        body: JSON.stringify(insertData),
       });
 
       return await this.handleResponse(insertResponse, "Failed to save ingredients");
@@ -463,8 +447,6 @@ class DatabaseHandler {
 
   async getProductIngredients(productGroupId) {
     try {
-      console.log("Getting product ingredients:", { productGroupId });
-
       const response = await fetch(
         `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}&is_current=eq.true`,
         {
@@ -481,9 +463,6 @@ class DatabaseHandler {
   }
 
   async testModalDataProcessing(modalData) {
-    console.log("Testing modal data processing...");
-    console.log("Input data:", JSON.stringify(modalData, null, 2));
-
     const validation = validateModalData(modalData, true);
 
     if (!validation.isValid) {
@@ -493,9 +472,6 @@ class DatabaseHandler {
         errors: validation.errors,
       };
     }
-
-    console.log("Validation passed. Validated data:", validation.data);
-
     return {
       success: true,
       data: validation.data,

@@ -68,8 +68,6 @@ export class ProductDataManager {
     const batch = Array.from(this.currentBatch);
     this.currentBatch.clear();
 
-    console.log(`Processing batch of ${batch.length} products`);
-
     try {
       for (let i = 0; i < batch.length; i += this.batchSize) {
         const chunk = batch.slice(i, i + this.batchSize);

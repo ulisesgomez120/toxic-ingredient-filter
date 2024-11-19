@@ -27,7 +27,6 @@ export class OverlayManager {
       .split(",")
       .map((i) => i.trim())
       .filter((i) => i);
-
     // Find matching toxic ingredients
     const found = [];
     for (const ingredient of ingredientList) {
@@ -41,7 +40,6 @@ export class OverlayManager {
         }
       }
     }
-
     return found;
   }
 

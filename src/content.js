@@ -108,13 +108,8 @@ class ProductScanner {
         // Update the ID prefix if we haven't set it yet
         if (!this.idPrefix) {
           this.idPrefix = this.extractIdPrefix(rawProductData.external_id);
-          console.log("Set ID prefix pattern:", this.idPrefix);
         }
 
-        console.log("Storing product data:", {
-          id: rawProductData.external_id,
-          data: rawProductData,
-        });
         // Store with the full external_id
         this.productListData.set(rawProductData.external_id, rawProductData);
 
@@ -132,7 +127,6 @@ class ProductScanner {
         try {
           const formattedData = this.formatProductData(rawProductData);
           const result = await this.dbHandler.saveProductListing(formattedData);
-          console.log("Product saved to database:", result);
         } catch (error) {
           console.error("Error saving product to database:", error);
         }
@@ -146,11 +140,9 @@ class ProductScanner {
     try {
       // Get the product ID from the modal
       const productId = this.getProductIdFromModal(modalElement);
-      console.log("Processing modal for product ID:", productId);
 
       // Get the associated list data
       const listData = this.productListData.get(productId);
-      console.log("Retrieved list data for modal:", listData);
 
       const rawModalData = await extractProductFromModal(modalElement, listData);
       if (!rawModalData) return;
@@ -167,8 +159,13 @@ class ProductScanner {
           });
 
           if (productGroup) {
-            await this.dbHandler.saveIngredients(productGroup.id, rawModalData.ingredients);
-            console.log("Ingredients saved successfully for product group:", productGroup.id);
+            const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
+
+            await this.dbHandler.saveIngredients(
+              productGroup.id,
+              rawModalData.ingredients,
+              toxinFlags.length > 0 ? toxinFlags : null
+            );
           }
         } catch (error) {
           console.error("Error saving ingredients to database:", error);
