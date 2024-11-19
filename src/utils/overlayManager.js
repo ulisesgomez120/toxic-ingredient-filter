@@ -9,6 +9,29 @@ export class OverlayManager {
     );
   }
 
+  // Get severity color based on highest concern level
+  getSeverityColor(toxinFlags) {
+    const concernLevels = {
+      High: "#dc3545", // Red
+      Moderate: "#ffc107", // Yellow
+      Low: "#28a745", // Green
+    };
+
+    if (toxinFlags?.length === 0) {
+      return "#28a745"; // Green for no toxins
+    } else if (!toxinFlags) {
+      return "#6c757d"; // Gray for no data
+    }
+
+    // Find highest concern level
+    const highestConcern = toxinFlags.reduce((highest, current) => {
+      const concernOrder = { High: 3, Moderate: 2, Low: 1 };
+      return concernOrder[current.concernLevel] > concernOrder[highest] ? current.concernLevel : highest;
+    }, "Low");
+
+    return concernLevels[highestConcern];
+  }
+
   // Update toxic ingredients with custom ones from settings
   updateCustomIngredients(customIngredients) {
     customIngredients.forEach((ingredient) => {
@@ -49,28 +72,33 @@ export class OverlayManager {
       productElement.style.position = "relative";
     }
 
-    // Create overlay container
-    const overlay = document.createElement("div");
-    overlay.className = "toxic-overlay";
+    // Create badge container
+    const badge = document.createElement("div");
+    badge.className = "toxic-badge";
 
-    // Create info container
-    const infoContainer = document.createElement("div");
-    infoContainer.className = "toxic-info";
+    // Get toxin flags or empty array
+    const toxinFlags = productData.toxin_flags || null;
+    const severityColor = this.getSeverityColor(toxinFlags);
+    badge.style.backgroundColor = severityColor;
 
-    // Find toxic ingredients if we have ingredient data
-    const toxicIngredients = this.findToxicIngredients(productData.ingredients);
+    // Add count to badge
+    badge.textContent = toxinFlags === null ? "X" : toxinFlags.length;
 
-    if (toxicIngredients.length > 0) {
-      // Add toxic ingredients to info container
+    // Create tooltip container
+    const tooltip = document.createElement("div");
+    tooltip.className = "toxic-tooltip";
+    if (toxinFlags === null) {
       const header = document.createElement("div");
-      header.style.fontWeight = "bold";
-      header.style.marginBottom = "8px";
-      header.textContent = `Found ${toxicIngredients.length} concerning ingredient${
-        toxicIngredients.length > 1 ? "s" : ""
-      }:`;
-      infoContainer.appendChild(header);
+      header.className = "toxic-tooltip-header";
+      header.textContent = "No ingredient data available";
+      tooltip.appendChild(header);
+    } else if (toxinFlags.length > 0) {
+      const header = document.createElement("div");
+      header.className = "toxic-tooltip-header";
+      header.textContent = `Found ${toxinFlags.length} concerning ingredient${toxinFlags.length > 1 ? "s" : ""}:`;
+      tooltip.appendChild(header);
 
-      toxicIngredients.forEach((ingredient) => {
+      toxinFlags.forEach((ingredient) => {
         const ingredientDiv = document.createElement("div");
         ingredientDiv.className = "toxic-ingredient";
 
@@ -83,18 +111,21 @@ export class OverlayManager {
 
         ingredientDiv.appendChild(nameSpan);
         ingredientDiv.appendChild(concernSpan);
-        infoContainer.appendChild(ingredientDiv);
+        tooltip.appendChild(ingredientDiv);
       });
-
-      // Add info container to overlay
-      overlay.appendChild(infoContainer);
-
-      // Add overlay to product element
-      productElement.appendChild(overlay);
-
-      return true; // Return true if overlay was added
+    } else if (toxinFlags.length === 0) {
+      const noToxinsDiv = document.createElement("div");
+      noToxinsDiv.className = "toxic-tooltip-safe";
+      noToxinsDiv.textContent = "No concerning ingredients found";
+      tooltip.appendChild(noToxinsDiv);
     }
 
-    return false; // Return false if no toxic ingredients were found
+    // Add tooltip to badge
+    badge.appendChild(tooltip);
+
+    // Add badge to product element
+    productElement.appendChild(badge);
+
+    return true;
   }
 }
