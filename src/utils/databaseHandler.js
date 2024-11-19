@@ -260,7 +260,7 @@ class DatabaseHandler {
       if (productData.ingredients) {
         // Find toxic ingredients using OverlayManager
         const toxinFlags = this.overlayManager.findToxicIngredients(productData.ingredients);
-        await this.saveIngredients(productGroup.id, productData.ingredients, toxinFlags.length > 0 ? toxinFlags : null);
+        await this.saveIngredients(productGroup.id, productData.ingredients, toxinFlags.length > 0 ? toxinFlags : []);
       }
 
       return {
@@ -402,7 +402,7 @@ class DatabaseHandler {
     }
   }
 
-  async saveIngredients(productGroupId, ingredients, toxinFlags = null) {
+  async saveIngredients(productGroupId, ingredients, toxinFlags = []) {
     try {
       // First, mark existing ingredients as not current
       const updateResponse = await fetch(
@@ -445,7 +445,7 @@ class DatabaseHandler {
     }
   }
 
-  async getProductIngredients(productGroupId) {
+  async getProductWithIngredients(productGroupId) {
     try {
       const response = await fetch(
         `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}&is_current=eq.true`,
@@ -455,9 +455,9 @@ class DatabaseHandler {
       );
 
       const data = await this.handleResponse(response, "Failed to fetch ingredients");
-      return Array.isArray(data) && data.length > 0 ? data[0].ingredients : null;
+      return Array.isArray(data) && data.length > 0 ? data[0] : null;
     } catch (error) {
-      console.error("Error in getProductIngredients:", error);
+      console.error("Error in getProductWithIngredients:", error);
       throw error;
     }
   }

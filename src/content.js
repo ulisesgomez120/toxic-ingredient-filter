@@ -112,7 +112,6 @@ class ProductScanner {
 
         // Store with the full external_id
         this.productListData.set(rawProductData.external_id, rawProductData);
-
         // Queue product for ingredient data fetching
         this.dataManager.queueProduct(rawProductData, (productDataWithIngredients) => {
           if (productDataWithIngredients) {
@@ -164,7 +163,7 @@ class ProductScanner {
             await this.dbHandler.saveIngredients(
               productGroup.id,
               rawModalData.ingredients,
-              toxinFlags.length > 0 ? toxinFlags : null
+              toxinFlags.length > 0 ? toxinFlags : []
             );
           }
         } catch (error) {

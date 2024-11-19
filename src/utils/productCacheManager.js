@@ -117,15 +117,17 @@ class ProductCacheManager {
       return false;
     }
   }
-
-  async getProductIngredients(productGroupId) {
+  async getProductWithIngredients(productGroupId) {
     try {
       const tx = this.db.transaction("ingredients", "readonly");
       const store = tx.objectStore("ingredients");
       const ingredientData = await this.dbRequest(store.get(productGroupId));
 
       if (ingredientData && this.isCacheValid(ingredientData.lastUpdated)) {
-        return ingredientData.ingredients;
+        return {
+          ingredients: ingredientData.ingredients,
+          toxinFlags: ingredientData.toxinFlags,
+        };
       }
     } catch (error) {
       console.error("Error getting ingredients:", error);
@@ -133,7 +135,7 @@ class ProductCacheManager {
     return null;
   }
 
-  async saveIngredients(productGroupId, ingredients) {
+  async saveIngredients(productGroupId, ingredients, toxinFlags = []) {
     try {
       const tx = this.db.transaction("ingredients", "readwrite");
       const store = tx.objectStore("ingredients");
@@ -141,6 +143,7 @@ class ProductCacheManager {
         store.put({
           productGroupId,
           ingredients,
+          toxinFlags, // Add toxinFlags to the stored data
           lastUpdated: Date.now(),
         })
       );

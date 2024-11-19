@@ -103,19 +103,27 @@ export class ProductDataManager {
               await this.cacheManager.saveProductGroup(productGroup);
 
               // Get ingredients
-              const ingredients = await this.dbHandler.getProductIngredients(productGroup.id);
+              const ingredients = await this.dbHandler.getProductWithIngredients(productGroup.id);
 
               if (ingredients) {
                 // Save ingredients to cache
-                await this.cacheManager.saveIngredients(productGroup.id, ingredients);
+                await this.cacheManager.saveIngredients(
+                  productGroup.id,
+                  ingredients.ingredients,
+                  ingredients.toxin_flags
+                );
 
                 const enrichedProduct = {
                   ...productData,
-                  ingredients,
+                  ...ingredients,
                 };
 
                 // Save complete product data to cache
-                await this.cacheManager.saveProduct(enrichedProduct);
+                await this.cacheManager.saveProduct(
+                  enrichedProduct.product_group_id,
+                  enrichedProduct.ingredients,
+                  enrichedProduct.toxin_flags
+                );
 
                 return enrichedProduct;
               }
