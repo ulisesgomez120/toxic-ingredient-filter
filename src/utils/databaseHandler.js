@@ -260,7 +260,11 @@ class DatabaseHandler {
       if (productData.ingredients) {
         // Find toxic ingredients using OverlayManager
         const toxinFlags = this.overlayManager.findToxicIngredients(productData.ingredients);
-        await this.saveIngredients(productGroup.id, productData.ingredients, toxinFlags.length > 0 ? toxinFlags : []);
+        await this.saveIngredients(
+          productGroup.id,
+          productData.ingredients,
+          toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : []
+        );
       }
 
       return {
@@ -427,7 +431,7 @@ class DatabaseHandler {
       };
 
       // Add toxin flags if provided
-      if (toxinFlags && toxinFlags.length > 0) {
+      if (toxinFlags) {
         insertData.toxin_flags = toxinFlags;
       }
 

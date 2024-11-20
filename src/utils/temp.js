@@ -56,7 +56,6 @@ function createOverlay(productElement, productData) {
   // Create info container
   const infoContainer = document.createElement("div");
   infoContainer.className = "toxic-info";
-  console.log("createOverlay -> productData", productData);
   // Find toxic ingredients if we have ingredient data
   // const toxicIngredients = this.findToxicIngredients(productData.ingredients);
 

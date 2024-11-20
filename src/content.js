@@ -114,10 +114,10 @@ class ProductScanner {
         this.productListData.set(rawProductData.external_id, rawProductData);
         // Queue product for ingredient data fetching
         this.dataManager.queueProduct(rawProductData, (productDataWithIngredients) => {
-          if (productDataWithIngredients) {
-            // Create overlay once we have ingredient data
-            this.overlayManager.createOverlay(productElement, productDataWithIngredients);
-          }
+          this.overlayManager.createOverlay(productElement, productDataWithIngredients);
+          // if (productDataWithIngredients) {
+          //   // Create overlay once we have ingredient data
+          // }
         });
       }
 
@@ -163,7 +163,7 @@ class ProductScanner {
             await this.dbHandler.saveIngredients(
               productGroup.id,
               rawModalData.ingredients,
-              toxinFlags.length > 0 ? toxinFlags : []
+              toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : []
             );
           }
         } catch (error) {

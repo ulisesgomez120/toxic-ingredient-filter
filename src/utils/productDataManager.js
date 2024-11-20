@@ -107,11 +107,13 @@ export class ProductDataManager {
 
               if (ingredients) {
                 // Save ingredients to cache
-                await this.cacheManager.saveIngredients(
-                  productGroup.id,
-                  ingredients.ingredients,
-                  ingredients.toxin_flags
-                );
+                let toxin_flags =
+                  ingredients.toxin_flags === null
+                    ? null
+                    : ingredients.toxin_flags.length > 0
+                    ? ingredients.toxin_flags
+                    : [];
+                await this.cacheManager.saveIngredients(productGroup.id, ingredients.ingredients, toxin_flags);
 
                 const enrichedProduct = {
                   ...productData,
