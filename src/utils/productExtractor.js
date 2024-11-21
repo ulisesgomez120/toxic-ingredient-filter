@@ -210,34 +210,6 @@ function getImageUrl(element) {
   return img.getAttribute("src") || "";
 }
 
-// Updated to only include non-nutrition attributes
-// function getAttributes(element) {
-//   const attributes = [];
-
-//   // Extract rating if exists
-//   const ratingElement = element.querySelector(".e-8k1832");
-//   if (ratingElement) {
-//     const ratingText = ratingElement.parentElement?.textContent;
-//     if (ratingText) {
-//       attributes.push({
-//         key: "rating",
-//         value: ratingText.trim(),
-//       });
-//     }
-//   }
-
-//   // Extract review count if exists
-//   const reviewElement = element.querySelector(".e-6sv5ld");
-//   if (reviewElement) {
-//     attributes.push({
-//       key: "review_count",
-//       value: reviewElement.textContent.replace(/[()]/g, "").trim(),
-//     });
-//   }
-
-//   return attributes;
-// }
-
 function parseServingSize(servingSizeText) {
   if (!servingSizeText) return null;
 
@@ -336,105 +308,82 @@ async function extractProductFromModal(modalContent, listData = null) {
     }
 
     // Get nutritional information using updated class
-    const nutritionSection = modalContent.querySelector(".e-kdmqsz");
-    let nutrition = null;
+    // This is not working correctly yet. its getting some data but i dont know where. not needed for mvp 1
+    // const nutritionSection = modalContent.querySelector(".e-kdmqsz");
+    // let nutrition = null;
 
-    if (nutritionSection) {
-      nutrition = {
-        serving_size: null,
-        calories: null,
-        total_fat: null,
-        saturated_fat: null,
-        trans_fat: null,
-        polyunsaturated_fat: null,
-        monounsaturated_fat: null,
-        cholesterol: null,
-        sodium: null,
-        total_carbohydrate: null,
-        dietary_fiber: null,
-        total_sugars: null,
-        added_sugars: null,
-        protein: null,
-      };
+    // if (nutritionSection) {
+    //   nutrition = {
+    //     serving_size: null,
+    //     calories: null,
+    //     total_fat: null,
+    //     saturated_fat: null,
+    //     trans_fat: null,
+    //     polyunsaturated_fat: null,
+    //     monounsaturated_fat: null,
+    //     cholesterol: null,
+    //     sodium: null,
+    //     total_carbohydrate: null,
+    //     dietary_fiber: null,
+    //     total_sugars: null,
+    //     added_sugars: null,
+    //     protein: null,
+    //   };
 
-      // Extract serving size
-      const servingSize = nutritionSection.querySelector(".e-78jcqk")?.textContent;
-      if (servingSize) {
-        const parsedSize = parseServingSize(servingSize);
-        if (parsedSize) {
-          nutrition.serving_size = parsedSize;
-        }
-      }
-
-      // Extract calories
-      const calories = nutritionSection.querySelector(".e-1thcph1")?.textContent;
-      if (calories) {
-        const caloriesValue = calories.match(/\d+/)?.[0];
-        if (caloriesValue) {
-          nutrition.calories = parseInt(caloriesValue, 10);
-        }
-      }
-
-      // Define nutrition facts mapping
-      const nutritionFacts = [
-        { label: "Total Fat", key: "total_fat" },
-        { label: "Saturated Fat", key: "saturated_fat" },
-        { label: "Trans Fat", key: "trans_fat" },
-        { label: "Polyunsaturated Fat", key: "polyunsaturated_fat" },
-        { label: "Monounsaturated Fat", key: "monounsaturated_fat" },
-        { label: "Cholesterol", key: "cholesterol" },
-        { label: "Sodium", key: "sodium" },
-        { label: "Total Carbohydrate", key: "total_carbohydrate" },
-        { label: "Dietary Fiber", key: "dietary_fiber" },
-        { label: "Total Sugars", key: "total_sugars" },
-        { label: "Includes", key: "added_sugars" }, // "Includes X Added Sugars"
-        { label: "Protein", key: "protein" },
-      ];
-
-      // Get all text-containing elements in the nutrition section
-      const allElements = nutritionSection.getElementsByTagName("*");
-
-      for (const element of allElements) {
-        const text = element.textContent.trim();
-
-        // Skip empty text and serving size info
-        if (!text || text.includes("servings per container")) continue;
-
-        // Try to match each nutrition fact
-        for (const { label, key } of nutritionFacts) {
-          if (text.includes(label)) {
-            const value = extractNutritionalValue(text, label);
-            if (value !== null) {
-              nutrition[key] = value;
-            }
-            break;
-          }
-        }
-      }
-    }
-
-    // // Get non-nutrition attributes
-    // const attributes = [];
-
-    // // Extract rating if exists
-    // const ratingElement = modalContent.querySelector(".e-8k1832");
-    // if (ratingElement) {
-    //   const ratingText = ratingElement.parentElement?.textContent;
-    //   if (ratingText) {
-    //     attributes.push({
-    //       key: "rating",
-    //       value: ratingText.trim(),
-    //     });
+    //   // Extract serving size
+    //   const servingSize = nutritionSection.querySelector(".e-78jcqk")?.textContent;
+    //   if (servingSize) {
+    //     const parsedSize = parseServingSize(servingSize);
+    //     if (parsedSize) {
+    //       nutrition.serving_size = parsedSize;
+    //     }
     //   }
-    // }
 
-    // // Extract review count if exists
-    // const reviewElement = modalContent.querySelector(".e-6sv5ld");
-    // if (reviewElement) {
-    //   attributes.push({
-    //     key: "review_count",
-    //     value: reviewElement.textContent.replace(/[()]/g, "").trim(),
-    //   });
+    //   // Extract calories
+    //   const calories = nutritionSection.querySelector(".e-1thcph1")?.textContent;
+    //   if (calories) {
+    //     const caloriesValue = calories.match(/\d+/)?.[0];
+    //     if (caloriesValue) {
+    //       nutrition.calories = parseInt(caloriesValue, 10);
+    //     }
+    //   }
+
+    //   // Define nutrition facts mapping
+    //   const nutritionFacts = [
+    //     { label: "Total Fat", key: "total_fat" },
+    //     { label: "Saturated Fat", key: "saturated_fat" },
+    //     { label: "Trans Fat", key: "trans_fat" },
+    //     { label: "Polyunsaturated Fat", key: "polyunsaturated_fat" },
+    //     { label: "Monounsaturated Fat", key: "monounsaturated_fat" },
+    //     { label: "Cholesterol", key: "cholesterol" },
+    //     { label: "Sodium", key: "sodium" },
+    //     { label: "Total Carbohydrate", key: "total_carbohydrate" },
+    //     { label: "Dietary Fiber", key: "dietary_fiber" },
+    //     { label: "Total Sugars", key: "total_sugars" },
+    //     { label: "Includes", key: "added_sugars" }, // "Includes X Added Sugars"
+    //     { label: "Protein", key: "protein" },
+    //   ];
+
+    //   // Get all text-containing elements in the nutrition section
+    //   const allElements = nutritionSection.getElementsByTagName("*");
+
+    //   for (const element of allElements) {
+    //     const text = element.textContent.trim();
+
+    //     // Skip empty text and serving size info
+    //     if (!text || text.includes("servings per container")) continue;
+
+    //     // Try to match each nutrition fact
+    //     for (const { label, key } of nutritionFacts) {
+    //       if (text.includes(label)) {
+    //         const value = extractNutritionalValue(text, label);
+    //         if (value !== null) {
+    //           nutrition[key] = value;
+    //         }
+    //         break;
+    //       }
+    //     }
+    //   }
     // }
 
     // Merge with list data if provided, otherwise extract required fields from modal
@@ -442,8 +391,7 @@ async function extractProductFromModal(modalContent, listData = null) {
       return {
         ...listData,
         ingredients,
-        nutrition,
-        // attributes: [...(listData.attributes || []), ...attributes],
+        // nutrition,
       };
     }
 
@@ -459,7 +407,6 @@ async function extractProductFromModal(modalContent, listData = null) {
       retailerId,
       ingredients,
       nutrition,
-      // attributes,
     };
   } catch (error) {
     console.error("Error extracting product from modal:", error);

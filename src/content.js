@@ -148,7 +148,7 @@ class ProductScanner {
 
       // Clear cache for this product to ensure we get fresh data
       this.dataManager.clearCache(productId);
-
+      console.log("nutrition", rawModalData.nutrition);
       // Process with database if handler is available
       if (this.dbHandler && rawModalData.ingredients) {
         try {
@@ -159,7 +159,11 @@ class ProductScanner {
 
           if (productGroup) {
             const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
-
+            if (toxinFlags?.length > 0) {
+              // create overlay somewhere on the modal
+              const img = modalElement.querySelector(".e-76rf0");
+              this.overlayManager.createOverlay(img, { toxin_flags: toxinFlags });
+            }
             await this.dbHandler.saveIngredients(
               productGroup.id,
               rawModalData.ingredients,

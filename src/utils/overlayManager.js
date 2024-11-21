@@ -77,7 +77,7 @@ export class OverlayManager {
     badge.className = "toxic-badge";
 
     // Get toxin flags or empty array
-    const toxinFlags = productData.toxin_flags || null;
+    const toxinFlags = productData?.toxin_flags || null;
     const severityColor = this.getSeverityColor(toxinFlags);
     badge.style.backgroundColor = severityColor;
 
