@@ -109,9 +109,8 @@ function getPriceInfo(element) {
       priceAmount = cents / 100;
     }
   }
-
   return {
-    price_amount: priceAmount,
+    price_amount: priceAmount || 0,
     price_unit: "each", // default, can be updated based on UI
   };
 }
@@ -286,119 +285,41 @@ function getModalUrlPath() {
 }
 
 // Updated modal extraction function to handle nutrition as a separate object
-async function extractProductFromModal(modalContent, listData = null) {
+async function extractProductFromSource(sourceContent, sourceType = "modal", listData = null) {
   try {
     // Get retailer ID if no list data provided
     const retailerId = listData ? listData.retailerId : await retailerConfig.getRetailerId(window.location.href);
 
-    // Use a more generic selector that matches any div ending with "-Ingredients"
-    const ingredientsSection = modalContent.querySelector('div[id$="-Ingredients"]');
-    let ingredients = null;
+    let name, external_id, url_path, ingredients, price_amount;
 
-    if (ingredientsSection) {
-      // Look for ingredients text in a paragraph element
-      const ingredientsText = ingredientsSection.querySelector("p")?.textContent;
-      if (ingredientsText) {
-        ingredients = ingredientsText.trim();
-      } else {
-        // Fallback to looking for the specific class if paragraph not found
-        const ingredientsTextAlt = ingredientsSection.querySelector(".e-tluef2")?.textContent;
-        ingredients = ingredientsTextAlt ? ingredientsTextAlt.trim() : null;
+    if (sourceType === "modal") {
+      name = getModalName(sourceContent);
+      external_id = getModalExternalId(sourceContent);
+      url_path = getModalUrlPath();
+
+      // Use a more generic selector that matches any div ending with "-Ingredients"
+      const ingredientsSection = sourceContent.querySelector('div[id$="-Ingredients"]');
+      if (ingredientsSection) {
+        const ingredientsText = ingredientsSection.querySelector("p")?.textContent;
+        ingredients = ingredientsText
+          ? ingredientsText.trim()
+          : ingredientsSection.querySelector(".e-tluef2")?.textContent?.trim() || null;
       }
+    } else if (sourceType === "product_page") {
+      name = getProductPageName(sourceContent);
+      external_id = getProductPageExternalId(sourceContent);
+      url_path = getProductPageUrlPath();
+      ingredients = getProductPageIngredients(sourceContent);
+      price_amount = getProductPagePrice(sourceContent);
     }
 
-    // Get nutritional information using updated class
-    // This is not working correctly yet. its getting some data but i dont know where. not needed for mvp 1
-    // const nutritionSection = modalContent.querySelector(".e-kdmqsz");
-    // let nutrition = null;
-
-    // if (nutritionSection) {
-    //   nutrition = {
-    //     serving_size: null,
-    //     calories: null,
-    //     total_fat: null,
-    //     saturated_fat: null,
-    //     trans_fat: null,
-    //     polyunsaturated_fat: null,
-    //     monounsaturated_fat: null,
-    //     cholesterol: null,
-    //     sodium: null,
-    //     total_carbohydrate: null,
-    //     dietary_fiber: null,
-    //     total_sugars: null,
-    //     added_sugars: null,
-    //     protein: null,
-    //   };
-
-    //   // Extract serving size
-    //   const servingSize = nutritionSection.querySelector(".e-78jcqk")?.textContent;
-    //   if (servingSize) {
-    //     const parsedSize = parseServingSize(servingSize);
-    //     if (parsedSize) {
-    //       nutrition.serving_size = parsedSize;
-    //     }
-    //   }
-
-    //   // Extract calories
-    //   const calories = nutritionSection.querySelector(".e-1thcph1")?.textContent;
-    //   if (calories) {
-    //     const caloriesValue = calories.match(/\d+/)?.[0];
-    //     if (caloriesValue) {
-    //       nutrition.calories = parseInt(caloriesValue, 10);
-    //     }
-    //   }
-
-    //   // Define nutrition facts mapping
-    //   const nutritionFacts = [
-    //     { label: "Total Fat", key: "total_fat" },
-    //     { label: "Saturated Fat", key: "saturated_fat" },
-    //     { label: "Trans Fat", key: "trans_fat" },
-    //     { label: "Polyunsaturated Fat", key: "polyunsaturated_fat" },
-    //     { label: "Monounsaturated Fat", key: "monounsaturated_fat" },
-    //     { label: "Cholesterol", key: "cholesterol" },
-    //     { label: "Sodium", key: "sodium" },
-    //     { label: "Total Carbohydrate", key: "total_carbohydrate" },
-    //     { label: "Dietary Fiber", key: "dietary_fiber" },
-    //     { label: "Total Sugars", key: "total_sugars" },
-    //     { label: "Includes", key: "added_sugars" }, // "Includes X Added Sugars"
-    //     { label: "Protein", key: "protein" },
-    //   ];
-
-    //   // Get all text-containing elements in the nutrition section
-    //   const allElements = nutritionSection.getElementsByTagName("*");
-
-    //   for (const element of allElements) {
-    //     const text = element.textContent.trim();
-
-    //     // Skip empty text and serving size info
-    //     if (!text || text.includes("servings per container")) continue;
-
-    //     // Try to match each nutrition fact
-    //     for (const { label, key } of nutritionFacts) {
-    //       if (text.includes(label)) {
-    //         const value = extractNutritionalValue(text, label);
-    //         if (value !== null) {
-    //           nutrition[key] = value;
-    //         }
-    //         break;
-    //       }
-    //     }
-    //   }
-    // }
-
-    // Merge with list data if provided, otherwise extract required fields from modal
+    // Merge with list data if provided, otherwise return extracted data
     if (listData) {
       return {
         ...listData,
         ingredients,
-        // nutrition,
       };
     }
-
-    // Extract required fields from modal when list data is not available
-    const name = getModalName(modalContent);
-    const external_id = getModalExternalId(modalContent);
-    const url_path = getModalUrlPath();
 
     return {
       name,
@@ -406,10 +327,10 @@ async function extractProductFromModal(modalContent, listData = null) {
       url_path,
       retailerId,
       ingredients,
-      nutrition,
+      price_amount,
     };
   } catch (error) {
-    console.error("Error extracting product from modal:", error);
+    console.error(`Error extracting product from ${sourceType}:`, error);
     return null;
   }
 }
@@ -426,4 +347,95 @@ async function processProductList(htmlContent) {
   return products.filter((product) => product !== null);
 }
 
-export { extractProductFromList, extractProductFromModal, processProductList };
+function getProductPageName(sourceContent) {
+  // Try multiple selectors for product name
+  const nameSelectors = [
+    ".e-6vf2xs", // Modal name selector
+    '[data-testid="item_details_title"]', // Modal fallback
+    ".e-76rf0 h1", // Product page potential selector
+    '.e-76rf0 [data-testid="item_details_title"]', // Another potential selector
+  ];
+
+  for (const selector of nameSelectors) {
+    const nameElement = sourceContent.querySelector(selector);
+    if (nameElement) {
+      return nameElement.textContent.trim();
+    }
+  }
+
+  return null;
+}
+
+function getProductPageExternalId(sourceContent) {
+  // Try to get ID from URL
+  const urlMatch = window.location.href.match(/\/products\/(\d+)/);
+  if (urlMatch) {
+    return urlMatch[1];
+  }
+
+  // Try to get from data attributes or other potential sources
+  const detailsElement = sourceContent.querySelector('[data-testid^="item_details_"]');
+  if (detailsElement) {
+    const testId = detailsElement.getAttribute("data-testid");
+    return testId.replace("item_details_", "");
+  }
+
+  return null;
+}
+
+function getProductPageUrlPath() {
+  // Get the current URL path
+  const url = new URL(window.location.href);
+  return url.pathname + url.search;
+}
+
+function getProductPageIngredients(sourceContent) {
+  // Try multiple selectors for ingredients
+  const ingredientSelectors = [
+    'div[id$="-Ingredients"] p',
+    'div[id$="-Ingredients"] .e-tluef2',
+    ".e-tluef2", // Generic ingredients class
+  ];
+
+  for (const selector of ingredientSelectors) {
+    const ingredientsElement = sourceContent.querySelector(selector);
+    if (ingredientsElement) {
+      const ingredientsText = ingredientsElement.textContent.trim();
+      return ingredientsText || null;
+    }
+  }
+
+  return null;
+}
+
+function getProductPagePrice(sourceContent) {
+  // Try multiple selectors for price
+  const priceSelectors = [
+    ".e-76rf0 .e-1ip314g", // Price selector on product page
+    ".e-1ip314g", // Generic price selector
+  ];
+
+  for (const selector of priceSelectors) {
+    const priceElement = sourceContent.querySelector(selector);
+    if (priceElement) {
+      // Get all text nodes to handle superscript numbers
+      const textNodes = Array.from(priceElement.childNodes)
+        .filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE)
+        .map((node) => node.textContent.trim())
+        .join("");
+
+      // Remove dollar sign and any whitespace
+      const priceText = textNodes.replace("$", "").replace(/\s+/g, "");
+
+      // Convert to cents then to dollars
+      if (priceText) {
+        const cents = parseInt(priceText, 10);
+        return cents / 100;
+      }
+    }
+  }
+
+  return null;
+}
+
+export { extractProductFromList, processProductList, extractProductFromSource };

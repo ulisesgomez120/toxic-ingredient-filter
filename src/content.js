@@ -1,5 +1,5 @@
 // Dynamic import of utility functions
-import { extractProductFromList, extractProductFromModal } from "./utils/productExtractor";
+import { extractProductFromList, extractProductFromSource } from "./utils/productExtractor";
 import DatabaseHandler from "./utils/databaseHandler";
 import { OverlayManager } from "./utils/overlayManager";
 import { ProductDataManager } from "./utils/productDataManager";
@@ -78,15 +78,13 @@ class ProductScanner {
 
   handlePageChanges(mutations) {
     for (const mutation of mutations) {
-      // Look for product list items being added
+      // Existing list item and modal processing...
       const productElements = document.querySelectorAll('li[data-testid^="item_list_item_"]:not([data-processed])');
-
       productElements.forEach(async (element) => {
         element.setAttribute("data-processed", "true");
         await this.analyzeProduct(element);
       });
 
-      // Look for ingredients section being added
       const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
       if (ingredientsSection) {
         ingredientsSection.setAttribute("data-processed", "true");
@@ -94,6 +92,13 @@ class ProductScanner {
         if (modalElement) {
           this.processModal(modalElement);
         }
+      }
+
+      // New: Check for individual product page
+      const productPageContainer = document.querySelector(".e-76rf0:not([data-processed])");
+      if (productPageContainer) {
+        productPageContainer.setAttribute("data-processed", "true");
+        this.processProductPage(productPageContainer);
       }
     }
   }
@@ -143,7 +148,7 @@ class ProductScanner {
       // Get the associated list data
       const listData = this.productListData.get(productId);
 
-      const rawModalData = await extractProductFromModal(modalElement, listData);
+      const rawModalData = await extractProductFromSource(modalElement, "modal", listData);
       if (!rawModalData) return;
 
       // Clear cache for this product to ensure we get fresh data
@@ -228,6 +233,48 @@ class ProductScanner {
 
     // Get the full ID using the current prefix pattern
     return this.getFullId(numericId);
+  }
+  // New method to process individual product pages
+  async processProductPage(productPageContainer) {
+    try {
+      // Extract product details from the page
+      const rawProductData = await extractProductFromSource(document, "product_page");
+      if (!rawProductData) return;
+
+      // Process with database if handler is available
+      if (this.dbHandler && rawProductData.ingredients) {
+        try {
+          const productGroup = await this.dbHandler.findOrCreateProductGroup({
+            brand: rawProductData.brand || "",
+            baseName: rawProductData.name,
+          });
+
+          if (productGroup) {
+            const toxinFlags = this.overlayManager.findToxicIngredients(rawProductData.ingredients);
+
+            // Create overlay if toxic ingredients found
+            if (toxinFlags?.length > 0) {
+              this.overlayManager.createOverlay(productPageContainer, { toxin_flags: toxinFlags });
+            }
+
+            // Save ingredients to database
+            await this.dbHandler.saveIngredients(
+              productGroup.id,
+              rawProductData.ingredients,
+              toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : []
+            );
+          }
+
+          // Save product listing to database
+          const formattedData = this.formatProductData(rawProductData);
+          await this.dbHandler.saveProductListing(formattedData);
+        } catch (error) {
+          console.error("Error processing product page:", error);
+        }
+      }
+    } catch (error) {
+      console.error("Error analyzing product page:", error);
+    }
   }
 
   // Format product data for database
