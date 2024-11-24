@@ -9,37 +9,70 @@ class ProductScanner {
   constructor() {
     this.overlayManager = new OverlayManager();
     this.dataManager = new ProductDataManager();
-    this.strictnessLevel = "moderate"; // Default setting
+    this.strictnessLevel = "moderate";
     this.dbHandler = null;
-    this.productListData = new Map(); // Store product data from list items
-    this.idPrefix = null; // Will be set dynamically based on first product encountered
+    this.productListData = new Map();
+    this.idPrefix = null;
+    this.productPageSelectors = [".e-76rf0", "[data-testid='product_details']", ".product-container"];
   }
 
   async init() {
     try {
-      // Initialize database handler
       this.dbHandler = new DatabaseHandler();
       console.log("Database handler initialized successfully");
+
+      // Listen for navigation events
+      navigation.addEventListener("navigate", (e) => {
+        console.log("Navigation event detected");
+        this.handleNavigation();
+      });
+
+      // Also handle initial page load
+      this.handleNavigation();
     } catch (error) {
       console.error("Failed to initialize database handler:", error);
-      // Continue initialization even if database handler fails
     }
 
     await this.loadSettings();
     this.setupMutationObserver();
   }
 
-  // Extract the store-specific ID prefix from an external_id
+  handleNavigation() {
+    // Try multiple times with increasing delays
+    const delays = [0, 100, 500, 1000];
+    delays.forEach((delay) => {
+      setTimeout(() => {
+        console.log(`Checking for product container after ${delay}ms`);
+        const productPageContainer = this.findProductContainer();
+        if (productPageContainer) {
+          console.log("Product container found, processing page");
+          // Remove data-processed to allow reprocessing
+          productPageContainer.removeAttribute("data-processed");
+          this.overlayManager.removeExistingOverlays(productPageContainer);
+          this.handlePageChanges([{}]);
+        }
+      }, delay);
+    });
+  }
+
+  findProductContainer() {
+    for (const selector of this.productPageSelectors) {
+      const container = document.querySelector(selector);
+      if (container) {
+        console.log(`Found product container with selector: ${selector}`);
+        return container;
+      }
+    }
+    return null;
+  }
   extractIdPrefix(externalId) {
     const match = externalId.match(/^(items_\d+)-/);
     return match ? match[1] : null;
   }
 
-  // Get full ID using current prefix pattern
   getFullId(numericId) {
     if (!numericId) return null;
 
-    // If we don't have a prefix yet, try to get it from existing data
     if (!this.idPrefix && this.productListData.size > 0) {
       const firstProduct = Array.from(this.productListData.values())[0];
       this.idPrefix = this.extractIdPrefix(firstProduct.external_id);
@@ -49,7 +82,6 @@ class ProductScanner {
   }
 
   async loadSettings() {
-    // Load settings from chrome.storage
     return new Promise((resolve) => {
       chrome.storage.sync.get(
         {
@@ -64,41 +96,52 @@ class ProductScanner {
       );
     });
   }
-
   setupMutationObserver() {
     const observer = new MutationObserver((mutations) => {
-      this.handlePageChanges(mutations);
+      // Debounce the handler to avoid multiple rapid calls
+      if (this.observerTimeout) {
+        clearTimeout(this.observerTimeout);
+      }
+      this.observerTimeout = setTimeout(() => {
+        this.handlePageChanges(mutations);
+      }, 100);
     });
 
     observer.observe(document.body, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: ["data-processed"],
     });
   }
 
   handlePageChanges(mutations) {
-    for (const mutation of mutations) {
-      // Existing list item and modal processing...
-      const productElements = document.querySelectorAll('li[data-testid^="item_list_item_"]:not([data-processed])');
-      productElements.forEach(async (element) => {
-        element.setAttribute("data-processed", "true");
-        await this.analyzeProduct(element);
-      });
+    console.log("Handle page changes called");
 
-      const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
-      if (ingredientsSection) {
-        ingredientsSection.setAttribute("data-processed", "true");
-        const modalElement = ingredientsSection.closest(".__reakit-portal");
-        if (modalElement) {
-          this.processModal(modalElement);
-        }
-      }
+    // Find product container using multiple selectors
+    const productPageContainer = this.findProductContainer();
 
-      // New: Check for individual product page
-      const productPageContainer = document.querySelector(".e-76rf0:not([data-processed])");
-      if (productPageContainer) {
+    if (productPageContainer && !productPageContainer.hasAttribute("data-processed")) {
+      console.log("Processing product page");
+      this.processProductPage(productPageContainer).then(() => {
         productPageContainer.setAttribute("data-processed", "true");
-        this.processProductPage(productPageContainer);
+      });
+      return;
+    }
+
+    // Process list items and modals
+    const productElements = document.querySelectorAll('li[data-testid^="item_list_item_"]:not([data-processed])');
+    productElements.forEach(async (element) => {
+      await this.analyzeProduct(element);
+      element.setAttribute("data-processed", "true");
+    });
+
+    const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
+    if (ingredientsSection) {
+      const modalElement = ingredientsSection.closest(".__reakit-portal");
+      if (modalElement) {
+        this.processModal(modalElement);
+        ingredientsSection.setAttribute("data-processed", "true");
       }
     }
   }
@@ -108,29 +151,21 @@ class ProductScanner {
       const rawProductData = await extractProductFromList(productElement);
       if (!rawProductData) return;
 
-      // Store the product data for later use with modal
       if (rawProductData.external_id) {
-        // Update the ID prefix if we haven't set it yet
         if (!this.idPrefix) {
           this.idPrefix = this.extractIdPrefix(rawProductData.external_id);
         }
 
-        // Store with the full external_id
         this.productListData.set(rawProductData.external_id, rawProductData);
-        // Queue product for ingredient data fetching
         this.dataManager.queueProduct(rawProductData, (productDataWithIngredients) => {
           this.overlayManager.createOverlay(productElement, productDataWithIngredients);
-          // if (productDataWithIngredients) {
-          //   // Create overlay once we have ingredient data
-          // }
         });
       }
 
-      // Save to database if handler is available
       if (this.dbHandler) {
         try {
           const formattedData = this.formatProductData(rawProductData);
-          const result = await this.dbHandler.saveProductListing(formattedData);
+          await this.dbHandler.saveProductListing(formattedData);
         } catch (error) {
           console.error("Error saving product to database:", error);
         }
@@ -142,19 +177,31 @@ class ProductScanner {
 
   async processModal(modalElement) {
     try {
-      // Get the product ID from the modal
       const productId = this.getProductIdFromModal(modalElement);
+      let listData = productId ? this.productListData.get(productId) : null;
+      let cachedProductData = null;
 
-      // Get the associated list data
-      const listData = this.productListData.get(productId);
+      if (!listData && productId) {
+        cachedProductData = await this.dataManager.cacheManager.getProduct(productId);
+      }
 
-      const rawModalData = await extractProductFromSource(modalElement, "modal", listData);
+      if (!listData && !cachedProductData && productId) {
+        try {
+          const productGroup = await this.dbHandler.findProductGroupByExternalId(productId);
+          if (productGroup) {
+            const ingredients = await this.dbHandler.getProductWithIngredients(productGroup.id);
+            cachedProductData = ingredients ? { ...productGroup, ...ingredients } : null;
+          }
+        } catch (error) {
+          console.error("Error fetching product from database:", error);
+        }
+      }
+
+      const rawModalData = await extractProductFromSource(modalElement, "modal", listData || cachedProductData);
       if (!rawModalData) return;
 
-      // Clear cache for this product to ensure we get fresh data
       this.dataManager.clearCache(productId);
-      console.log("nutrition", rawModalData.nutrition);
-      // Process with database if handler is available
+
       if (this.dbHandler && rawModalData.ingredients) {
         try {
           const productGroup = await this.dbHandler.findOrCreateProductGroup({
@@ -164,11 +211,12 @@ class ProductScanner {
 
           if (productGroup) {
             const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
-            if (toxinFlags?.length > 0) {
-              // create overlay somewhere on the modal
-              const img = modalElement.querySelector(".e-76rf0");
+            const img = modalElement.querySelector(".e-76rf0");
+            if (img) {
+              this.overlayManager.removeExistingOverlays(img);
               this.overlayManager.createOverlay(img, { toxin_flags: toxinFlags });
             }
+
             await this.dbHandler.saveIngredients(
               productGroup.id,
               rawModalData.ingredients,
@@ -187,14 +235,12 @@ class ProductScanner {
   getProductIdFromModal(modalElement) {
     let numericId = null;
 
-    // Try to find product ID from the modal content
     const modalContent = modalElement.querySelector('[data-testid^="item_details_"]');
     if (modalContent) {
       const testId = modalContent.getAttribute("data-testid");
       numericId = testId.replace("item_details_", "");
     }
 
-    // Try to find from any element with item_details in its data-testid
     if (!numericId) {
       const itemDetailsElement = modalElement.querySelector('[data-testid*="item_details"]');
       if (itemDetailsElement) {
@@ -206,7 +252,6 @@ class ProductScanner {
       }
     }
 
-    // Try to find from the ingredients section ID
     if (!numericId) {
       const ingredientsSection = modalElement.querySelector('div[id$="-Ingredients"]');
       if (ingredientsSection) {
@@ -218,7 +263,6 @@ class ProductScanner {
       }
     }
 
-    // Fallback: Try to find from URL
     if (!numericId) {
       const urlMatch = window.location.href.match(/\/items\/(\d+)/);
       if (urlMatch) {
@@ -231,15 +275,27 @@ class ProductScanner {
       return null;
     }
 
-    // Get the full ID using the current prefix pattern
     return this.getFullId(numericId);
   }
-  // New method to process individual product pages
+
   async processProductPage(productPageContainer) {
+    console.log("Process product page started");
     try {
+      // Always remove existing overlays first
+      console.log("Removing existing overlays");
+      this.overlayManager.removeExistingOverlays(productPageContainer);
+
       // Extract product details from the page
       const rawProductData = await extractProductFromSource(document, "product_page");
-      if (!rawProductData) return;
+      console.log("Raw product data:", rawProductData);
+
+      // Create overlay with default state
+      this.overlayManager.createOverlay(productPageContainer, { toxin_flags: [] });
+
+      if (!rawProductData) {
+        console.log("No raw product data found");
+        return;
+      }
 
       // Process with database if handler is available
       if (this.dbHandler && rawProductData.ingredients) {
@@ -251,40 +307,37 @@ class ProductScanner {
 
           if (productGroup) {
             const toxinFlags = this.overlayManager.findToxicIngredients(rawProductData.ingredients);
+            console.log("Toxin flags found:", toxinFlags);
 
-            // Create overlay if toxic ingredients found
-            if (toxinFlags?.length > 0) {
-              this.overlayManager.createOverlay(productPageContainer, { toxin_flags: toxinFlags });
-            }
+            // Update overlay with actual data
+            console.log("Updating overlay with toxin data");
+            this.overlayManager.removeExistingOverlays(productPageContainer);
+            this.overlayManager.createOverlay(productPageContainer, { toxin_flags: toxinFlags || [] });
 
-            // Save ingredients to database
             await this.dbHandler.saveIngredients(
               productGroup.id,
               rawProductData.ingredients,
               toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : []
             );
-          }
 
-          // Save product listing to database
-          const formattedData = this.formatProductData(rawProductData);
-          await this.dbHandler.saveProductListing(formattedData);
+            const formattedData = this.formatProductData(rawProductData);
+            await this.dbHandler.saveProductListing(formattedData);
+          }
         } catch (error) {
-          console.error("Error processing product page:", error);
+          console.error("Error processing product page with database:", error);
         }
       }
     } catch (error) {
-      console.error("Error analyzing product page:", error);
+      console.error("Error in processProductPage:", error);
     }
   }
 
-  // Format product data for database
   formatProductData(rawData) {
-    // Convert snake_case to camelCase and ensure proper types
     return {
       brand: rawData.brand || "",
       baseName: rawData.name,
       name: rawData.name,
-      retailerId: rawData.retailerId, // Already camelCase from retailerConfig
+      retailerId: rawData.retailerId,
       externalId: rawData.external_id,
       urlPath: rawData.url_path,
       priceAmount: rawData.price_amount,
@@ -292,11 +345,6 @@ class ProductScanner {
       imageUrl: rawData.image_url,
       baseUnit: rawData.base_unit,
       size: rawData.size,
-      // attributes:
-      //   rawData.attributes?.map((attr) => ({
-      //     key: attr.key,
-      //     value: String(attr.value), // Ensure value is a string
-      //   })) || [],
     };
   }
 }

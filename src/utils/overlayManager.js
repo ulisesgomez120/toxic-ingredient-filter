@@ -65,7 +65,13 @@ export class OverlayManager {
     }
     return found;
   }
-
+  removeExistingOverlays(productElement) {
+    // Remove any existing toxic badges
+    console.log("productElement", productElement);
+    const existingBadges = productElement.querySelectorAll(".toxic-badge");
+    // console.log("ex", existingBadges);
+    existingBadges.forEach((badge) => badge.remove());
+  }
   createOverlay(productElement, productData) {
     // Make sure the product element has relative positioning
     if (getComputedStyle(productElement).position === "static") {
@@ -87,6 +93,7 @@ export class OverlayManager {
     // Create tooltip container
     const tooltip = document.createElement("div");
     tooltip.className = "toxic-tooltip";
+
     if (toxinFlags === null) {
       const header = document.createElement("div");
       header.className = "toxic-tooltip-header";
