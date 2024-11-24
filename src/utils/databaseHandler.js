@@ -94,6 +94,47 @@ class DatabaseHandler {
     }
   }
 
+  async findProductGroupByExternalId(externalId) {
+    try {
+      // First, find the product listing by external ID
+      const listingResponse = await fetch(
+        `${this.supabaseUrl}/rest/v1/product_listings?external_id=eq.${encodeURIComponent(externalId)}`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      const listings = await this.handleResponse(listingResponse, "Failed to find product listing");
+      if (!listings || listings.length === 0) {
+        return null;
+      }
+
+      // Get the product using the product_id from the listing
+      const productResponse = await fetch(`${this.supabaseUrl}/rest/v1/products?id=eq.${listings[0].product_id}`, {
+        headers: this.getHeaders(),
+      });
+
+      const products = await this.handleResponse(productResponse, "Failed to find product");
+      if (!products || products.length === 0) {
+        return null;
+      }
+
+      // Finally, get the product group using the product_group_id from the product
+      const groupResponse = await fetch(
+        `${this.supabaseUrl}/rest/v1/product_groups?id=eq.${products[0].product_group_id}`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      const groups = await this.handleResponse(groupResponse, "Failed to find product group");
+      return groups && groups.length > 0 ? groups[0] : null;
+    } catch (error) {
+      console.error("Error in findProductGroupByExternalId:", error);
+      throw error;
+    }
+  }
+
   async findOrCreateProductGroup(productInfo) {
     try {
       if (!productInfo.baseName || productInfo.baseName.trim() === "") {
@@ -273,7 +314,7 @@ class DatabaseHandler {
       }
 
       // Step 4: Save ingredients if provided
-      if (productData.ingredients) {
+      if (productData.ingredients && productData.ingredients.trim() !== "") {
         // Find toxic ingredients using OverlayManager
         const toxinFlags = this.overlayManager.findToxicIngredients(productData.ingredients);
         await this.saveIngredients(
