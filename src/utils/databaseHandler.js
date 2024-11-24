@@ -114,7 +114,21 @@ class DatabaseHandler {
       const existingGroups = await this.handleResponse(searchResponse, "Failed to search for product group");
 
       if (existingGroups && existingGroups.length > 0) {
-        return existingGroups[0];
+        // Update the existing group with new brand if needed
+        const existingGroup = existingGroups[0];
+        if (existingGroup.brand !== productInfo.brand) {
+          const updateResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups?id=eq.${existingGroup.id}`, {
+            method: "PATCH",
+            headers: this.getHeaders("return=representation"),
+            body: JSON.stringify({
+              brand: productInfo.brand,
+              updated_at: new Date().toISOString(),
+            }),
+          });
+          const updatedGroup = await this.handleResponse(updateResponse, "Failed to update product group");
+          return Array.isArray(updatedGroup) ? updatedGroup[0] : updatedGroup;
+        }
+        return existingGroup;
       }
 
       // If not found, create new product group
@@ -122,8 +136,10 @@ class DatabaseHandler {
         method: "POST",
         headers: this.getHeaders("return=representation"),
         body: JSON.stringify({
-          brand: productInfo.brand, // Keep original brand
-          base_name: productInfo.baseName, // Keep original base name
+          brand: productInfo.brand,
+          base_name: productInfo.baseName,
+          normalized_base_name: normalizedBaseName,
+          normalized_brand: normalizedBrand,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }),
@@ -464,22 +480,6 @@ class DatabaseHandler {
       console.error("Error in getProductWithIngredients:", error);
       throw error;
     }
-  }
-
-  async testModalDataProcessing(modalData) {
-    const validation = validateModalData(modalData, true);
-
-    if (!validation.isValid) {
-      console.error("Validation failed:", validation.errors);
-      return {
-        success: false,
-        errors: validation.errors,
-      };
-    }
-    return {
-      success: true,
-      data: validation.data,
-    };
   }
 
   getHeaders(prefer = null) {

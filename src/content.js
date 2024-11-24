@@ -14,6 +14,11 @@ class ProductScanner {
     this.productListData = new Map();
     this.idPrefix = null;
     this.productPageSelectors = [".e-76rf0", "[data-testid='product_details']", ".product-container"];
+    this.processingPage = false;
+    this.processedItems = new Set(); // Track items that have been fully processed
+    this.observerTimeout = null;
+    this.navigationTimeout = null;
+    this.lastProcessedTime = 0;
   }
 
   async init() {
@@ -38,21 +43,23 @@ class ProductScanner {
   }
 
   handleNavigation() {
-    // Try multiple times with increasing delays
-    const delays = [0, 100, 500, 1000];
-    delays.forEach((delay) => {
-      setTimeout(() => {
-        console.log(`Checking for product container after ${delay}ms`);
-        const productPageContainer = this.findProductContainer();
-        if (productPageContainer) {
-          console.log("Product container found, processing page");
-          // Remove data-processed to allow reprocessing
-          productPageContainer.removeAttribute("data-processed");
-          this.overlayManager.removeExistingOverlays(productPageContainer);
-          this.handlePageChanges([{}]);
-        }
-      }, delay);
-    });
+    // Clear any existing navigation timeout
+    if (this.navigationTimeout) {
+      clearTimeout(this.navigationTimeout);
+    }
+
+    // Set new timeout
+    this.navigationTimeout = setTimeout(() => {
+      console.log("Checking for product container after delay");
+      const productPageContainer = this.findProductContainer();
+      if (productPageContainer && !this.processingPage) {
+        console.log("Product container found, processing page");
+        // Remove data-processed to allow reprocessing
+        productPageContainer.removeAttribute("data-processed");
+        this.overlayManager.removeExistingOverlays(productPageContainer);
+        this.handlePageChanges();
+      }
+    }, 500);
   }
 
   findProductContainer() {
@@ -65,6 +72,7 @@ class ProductScanner {
     }
     return null;
   }
+
   extractIdPrefix(externalId) {
     const match = externalId.match(/^(items_\d+)-/);
     return match ? match[1] : null;
@@ -96,32 +104,66 @@ class ProductScanner {
       );
     });
   }
+
+  hasRelevantChanges(mutations) {
+    return mutations.some((mutation) => {
+      // Check for added nodes that match our selectors
+      if (mutation.type === "childList" && mutation.addedNodes.length) {
+        return Array.from(mutation.addedNodes).some((node) => {
+          if (node.nodeType !== Node.ELEMENT_NODE) return false;
+
+          // Check if it's a product list item or ingredients section
+          return (
+            node.matches?.('li[data-testid^="item_list_item_"]') ||
+            node.matches?.('div[id$="-Ingredients"]') ||
+            node.querySelector?.('li[data-testid^="item_list_item_"]') ||
+            node.querySelector?.('div[id$="-Ingredients"]')
+          );
+        });
+      }
+      return false;
+    });
+  }
+
   setupMutationObserver() {
     const observer = new MutationObserver((mutations) => {
-      // Debounce the handler to avoid multiple rapid calls
+      // Check if enough time has passed since last processing
+      const now = Date.now();
+      if (now - this.lastProcessedTime < 250) {
+        return; // Skip if less than 250ms has passed
+      }
+
+      // Check if mutations contain relevant changes
+      if (!this.hasRelevantChanges(mutations)) {
+        return;
+      }
+
+      // Clear any existing timeout
       if (this.observerTimeout) {
         clearTimeout(this.observerTimeout);
       }
+
+      // Set new timeout
       this.observerTimeout = setTimeout(() => {
-        this.handlePageChanges(mutations);
-      }, 100);
+        this.lastProcessedTime = Date.now();
+        this.handlePageChanges();
+      }, 250);
     });
 
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ["data-processed"],
+      attributes: false,
     });
   }
 
-  handlePageChanges(mutations) {
+  handlePageChanges() {
     console.log("Handle page changes called");
 
     // Find product container using multiple selectors
     const productPageContainer = this.findProductContainer();
 
-    if (productPageContainer && !productPageContainer.hasAttribute("data-processed")) {
+    if (productPageContainer && !productPageContainer.hasAttribute("data-processed") && !this.processingPage) {
       console.log("Processing product page");
       this.processProductPage(productPageContainer).then(() => {
         productPageContainer.setAttribute("data-processed", "true");
@@ -131,25 +173,38 @@ class ProductScanner {
 
     // Process list items and modals
     const productElements = document.querySelectorAll('li[data-testid^="item_list_item_"]:not([data-processed])');
-    productElements.forEach(async (element) => {
-      await this.analyzeProduct(element);
-      element.setAttribute("data-processed", "true");
+    productElements.forEach((element) => {
+      const itemId = element.getAttribute("data-testid");
+      if (itemId && !this.processedItems.has(itemId) && !element.querySelector(".toxic-badge")) {
+        this.analyzeProduct(element, itemId);
+      }
     });
 
     const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
     if (ingredientsSection) {
       const modalElement = ingredientsSection.closest(".__reakit-portal");
-      if (modalElement) {
+      if (modalElement && !modalElement.querySelector(".toxic-badge")) {
         this.processModal(modalElement);
         ingredientsSection.setAttribute("data-processed", "true");
       }
     }
   }
 
-  async analyzeProduct(productElement) {
+  async analyzeProduct(productElement, itemId) {
+    if (!itemId || this.processedItems.has(itemId) || productElement.querySelector(".toxic-badge")) return;
+
     try {
+      // Mark as processed immediately to prevent duplicate processing
+      this.processedItems.add(itemId);
+
+      // Remove any existing overlays
+      this.overlayManager.removeExistingOverlays(productElement);
+
       const rawProductData = await extractProductFromList(productElement);
-      if (!rawProductData) return;
+      if (!rawProductData) {
+        this.overlayManager.createOverlay(productElement, { toxin_flags: null });
+        return;
+      }
 
       if (rawProductData.external_id) {
         if (!this.idPrefix) {
@@ -157,9 +212,20 @@ class ProductScanner {
         }
 
         this.productListData.set(rawProductData.external_id, rawProductData);
-        this.dataManager.queueProduct(rawProductData, (productDataWithIngredients) => {
-          this.overlayManager.createOverlay(productElement, productDataWithIngredients);
+
+        // Create a promise to handle the overlay creation
+        const overlayPromise = new Promise((resolve) => {
+          this.dataManager.queueProduct(rawProductData, (productDataWithIngredients) => {
+            if (!productElement.querySelector(".toxic-badge")) {
+              this.overlayManager.createOverlay(productElement, productDataWithIngredients);
+              productElement.setAttribute("data-processed", "true");
+            }
+            resolve();
+          });
         });
+
+        // Wait for overlay creation
+        await overlayPromise;
       }
 
       if (this.dbHandler) {
@@ -172,6 +238,8 @@ class ProductScanner {
       }
     } catch (error) {
       console.error("Error analyzing product:", error);
+      // Remove from processed items if there was an error
+      this.processedItems.delete(itemId);
     }
   }
 
@@ -204,27 +272,17 @@ class ProductScanner {
 
       if (this.dbHandler && rawModalData.ingredients) {
         try {
-          const productGroup = await this.dbHandler.findOrCreateProductGroup({
-            brand: rawModalData.brand || "",
-            baseName: rawModalData.name,
-          });
+          const formattedData = this.formatProductData(rawModalData);
+          await this.dbHandler.saveProductListing(formattedData);
 
-          if (productGroup) {
-            const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
-            const img = modalElement.querySelector(".e-76rf0");
-            if (img) {
-              this.overlayManager.removeExistingOverlays(img);
-              this.overlayManager.createOverlay(img, { toxin_flags: toxinFlags });
-            }
-
-            await this.dbHandler.saveIngredients(
-              productGroup.id,
-              rawModalData.ingredients,
-              toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : []
-            );
+          const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
+          const img = modalElement.querySelector(".e-76rf0");
+          if (img && !img.querySelector(".toxic-badge")) {
+            this.overlayManager.removeExistingOverlays(img);
+            this.overlayManager.createOverlay(img, { toxin_flags: toxinFlags });
           }
         } catch (error) {
-          console.error("Error saving ingredients to database:", error);
+          console.error("Error saving modal data to database:", error);
         }
       }
     } catch (error) {
@@ -279,9 +337,11 @@ class ProductScanner {
   }
 
   async processProductPage(productPageContainer) {
+    if (this.processingPage) return;
+    this.processingPage = true;
     console.log("Process product page started");
+
     try {
-      // Always remove existing overlays first
       console.log("Removing existing overlays");
       this.overlayManager.removeExistingOverlays(productPageContainer);
 
@@ -289,62 +349,65 @@ class ProductScanner {
       const rawProductData = await extractProductFromSource(document, "product_page");
       console.log("Raw product data:", rawProductData);
 
-      // Create overlay with default state
-      this.overlayManager.createOverlay(productPageContainer, { toxin_flags: [] });
-
       if (!rawProductData) {
         console.log("No raw product data found");
+        // Create overlay with no data state
+        this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
         return;
       }
 
       // Process with database if handler is available
       if (this.dbHandler && rawProductData.ingredients) {
         try {
-          const productGroup = await this.dbHandler.findOrCreateProductGroup({
-            brand: rawProductData.brand || "",
-            baseName: rawProductData.name,
-          });
+          // Format the data before saving
+          const formattedData = this.formatProductData(rawProductData);
 
-          if (productGroup) {
-            const toxinFlags = this.overlayManager.findToxicIngredients(rawProductData.ingredients);
-            console.log("Toxin flags found:", toxinFlags);
+          // Save the product listing first
+          await this.dbHandler.saveProductListing(formattedData);
 
-            // Update overlay with actual data
-            console.log("Updating overlay with toxin data");
-            this.overlayManager.removeExistingOverlays(productPageContainer);
+          // Process ingredients and create overlay
+          const toxinFlags = this.overlayManager.findToxicIngredients(rawProductData.ingredients);
+          console.log("Toxin flags found:", toxinFlags);
+
+          // Create overlay with actual data (only once)
+          if (!productPageContainer.querySelector(".toxic-badge")) {
+            console.log("Creating overlay with toxin data");
             this.overlayManager.createOverlay(productPageContainer, { toxin_flags: toxinFlags || [] });
-
-            await this.dbHandler.saveIngredients(
-              productGroup.id,
-              rawProductData.ingredients,
-              toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : []
-            );
-
-            const formattedData = this.formatProductData(rawProductData);
-            await this.dbHandler.saveProductListing(formattedData);
           }
         } catch (error) {
           console.error("Error processing product page with database:", error);
+          // Create overlay even if there was an error
+          if (!productPageContainer.querySelector(".toxic-badge")) {
+            this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
+          }
         }
+      } else {
+        // Create overlay with no data state if no database handler or ingredients
+        this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
       }
     } catch (error) {
       console.error("Error in processProductPage:", error);
+      // Create overlay with error state
+      if (!productPageContainer.querySelector(".toxic-badge")) {
+        this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
+      }
+    } finally {
+      this.processingPage = false;
     }
   }
 
   formatProductData(rawData) {
     return {
-      brand: rawData.brand || "",
-      baseName: rawData.name,
       name: rawData.name,
       retailerId: rawData.retailerId,
       externalId: rawData.external_id,
       urlPath: rawData.url_path,
-      priceAmount: rawData.price_amount,
+      priceAmount: rawData.price_amount ?? 0,
       priceUnit: rawData.price_unit,
       imageUrl: rawData.image_url,
       baseUnit: rawData.base_unit,
       size: rawData.size,
+      ingredients: rawData.ingredients,
     };
   }
 }

@@ -313,16 +313,21 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
       price_amount = getProductPagePrice(sourceContent);
     }
 
+    // Extract brand from name
+    const brand = name ? extractBrandFromName(name) : "";
+
     // Merge with list data if provided, otherwise return extracted data
     if (listData) {
       return {
         ...listData,
         ingredients,
+        brand: brand || listData.brand, // Use extracted brand or fallback to list data brand
       };
     }
 
     return {
       name,
+      brand,
       external_id,
       url_path,
       retailerId,
