@@ -23,23 +23,25 @@ class ProductScanner {
 
   async init() {
     try {
+      // Set up mutation observer first to catch any early changes
+      this.setupMutationObserver();
+
       this.dbHandler = new DatabaseHandler();
       console.log("Database handler initialized successfully");
+
+      await this.loadSettings();
+
+      // Process initial page state immediately
+      this.handlePageChanges();
 
       // Listen for navigation events
       navigation.addEventListener("navigate", (e) => {
         console.log("Navigation event detected");
         this.handleNavigation();
       });
-
-      // Also handle initial page load
-      this.handleNavigation();
     } catch (error) {
-      console.error("Failed to initialize database handler:", error);
+      console.error("Failed to initialize:", error);
     }
-
-    await this.loadSettings();
-    this.setupMutationObserver();
   }
 
   handleNavigation() {
@@ -48,18 +50,25 @@ class ProductScanner {
       clearTimeout(this.navigationTimeout);
     }
 
-    // Set new timeout
+    // Process immediately first
+    const productPageContainer = this.findProductContainer();
+    if (productPageContainer && !this.processingPage) {
+      console.log("Product container found immediately, processing page");
+      productPageContainer.removeAttribute("data-processed");
+      this.overlayManager.removeExistingOverlays(productPageContainer);
+      this.handlePageChanges();
+    }
+
+    // Set backup timeout with shorter delay
     this.navigationTimeout = setTimeout(() => {
       console.log("Checking for product container after delay");
-      const productPageContainer = this.findProductContainer();
-      if (productPageContainer && !this.processingPage) {
-        console.log("Product container found, processing page");
-        // Remove data-processed to allow reprocessing
-        productPageContainer.removeAttribute("data-processed");
-        this.overlayManager.removeExistingOverlays(productPageContainer);
+      const delayedContainer = this.findProductContainer();
+      if (delayedContainer && !this.processingPage && !delayedContainer.hasAttribute("data-processed")) {
+        console.log("Product container found after delay, processing page");
+        this.overlayManager.removeExistingOverlays(delayedContainer);
         this.handlePageChanges();
       }
-    }, 500);
+    }, 250); // Reduced from 500ms to 250ms
   }
 
   findProductContainer() {
@@ -162,13 +171,26 @@ class ProductScanner {
 
     // Find product container using multiple selectors
     const productPageContainer = this.findProductContainer();
-
     if (productPageContainer && !productPageContainer.hasAttribute("data-processed") && !this.processingPage) {
-      console.log("Processing product page");
-      this.processProductPage(productPageContainer).then(() => {
-        productPageContainer.setAttribute("data-processed", "true");
-      });
-      return;
+      console.log("Product container found:", productPageContainer);
+
+      let modalElement = productPageContainer.closest(".__reakit-portal");
+      if (modalElement) {
+        const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
+        if (ingredientsSection) {
+          const modalElement = ingredientsSection.closest(".__reakit-portal");
+          if (modalElement && !modalElement.querySelector(".toxic-badge")) {
+            this.processModal(modalElement);
+            ingredientsSection.setAttribute("data-processed", "true");
+          }
+        }
+      } else {
+        console.log("Processing product page");
+        this.processProductPage(productPageContainer).then(() => {
+          productPageContainer.setAttribute("data-processed", "true");
+        });
+        return;
+      }
     }
 
     // Process list items and modals
@@ -179,15 +201,6 @@ class ProductScanner {
         this.analyzeProduct(element, itemId);
       }
     });
-
-    const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
-    if (ingredientsSection) {
-      const modalElement = ingredientsSection.closest(".__reakit-portal");
-      if (modalElement && !modalElement.querySelector(".toxic-badge")) {
-        this.processModal(modalElement);
-        ingredientsSection.setAttribute("data-processed", "true");
-      }
-    }
   }
 
   async analyzeProduct(productElement, itemId) {
@@ -231,6 +244,7 @@ class ProductScanner {
       if (this.dbHandler) {
         try {
           const formattedData = this.formatProductData(rawProductData);
+
           await this.dbHandler.saveProductListing(formattedData);
         } catch (error) {
           console.error("Error saving product to database:", error);
@@ -266,27 +280,46 @@ class ProductScanner {
       }
 
       const rawModalData = await extractProductFromSource(modalElement, "modal", listData || cachedProductData);
-      if (!rawModalData) return;
+      const img = modalElement.querySelector(".e-76rf0");
 
-      this.dataManager.clearCache(productId);
+      if (img && !img.querySelector(".toxic-badge")) {
+        this.overlayManager.removeExistingOverlays(img);
 
-      if (this.dbHandler && rawModalData.ingredients) {
-        try {
-          const formattedData = this.formatProductData(rawModalData);
-          await this.dbHandler.saveProductListing(formattedData);
-
-          const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
-          const img = modalElement.querySelector(".e-76rf0");
-          if (img && !img.querySelector(".toxic-badge")) {
-            this.overlayManager.removeExistingOverlays(img);
-            this.overlayManager.createOverlay(img, { toxin_flags: toxinFlags });
-          }
-        } catch (error) {
-          console.error("Error saving modal data to database:", error);
+        if (!rawModalData) {
+          // Create overlay with no data state
+          this.overlayManager.createOverlay(img, { toxin_flags: null });
+          return;
         }
+
+        if (this.dbHandler && rawModalData.ingredients) {
+          try {
+            const formattedData = this.formatProductData(rawModalData);
+            await this.dbHandler.saveProductListing(formattedData);
+
+            const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
+            this.overlayManager.createOverlay(img, { toxin_flags: toxinFlags });
+          } catch (error) {
+            console.error("Error saving modal data to database:", error);
+            // Create overlay with error state
+            this.overlayManager.createOverlay(img, { toxin_flags: null });
+          }
+        } else {
+          // Create overlay with no data state if no database handler or ingredients
+          this.overlayManager.createOverlay(img, { toxin_flags: [] });
+        }
+      }
+
+      if (rawModalData) {
+        this.dataManager.clearCache(productId);
       }
     } catch (error) {
       console.error("Error processing modal:", error);
+      // Try to create an error state overlay if possible
+      const img = modalElement.querySelector(".e-76rf0");
+      if (img && !img.querySelector(".toxic-badge")) {
+        this.overlayManager.removeExistingOverlays(img);
+        this.overlayManager.createOverlay(img, { toxin_flags: null });
+      }
     }
   }
 
@@ -361,7 +394,7 @@ class ProductScanner {
         try {
           // Format the data before saving
           const formattedData = this.formatProductData(rawProductData);
-
+          console.log("Formatted product data:", formattedData);
           // Save the product listing first
           await this.dbHandler.saveProductListing(formattedData);
 
@@ -383,7 +416,7 @@ class ProductScanner {
         }
       } else {
         // Create overlay with no data state if no database handler or ingredients
-        this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
+        this.overlayManager.createOverlay(productPageContainer, { toxin_flags: [] });
       }
     } catch (error) {
       console.error("Error in processProductPage:", error);

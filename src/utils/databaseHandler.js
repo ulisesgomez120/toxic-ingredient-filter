@@ -269,7 +269,7 @@ class DatabaseHandler {
 
   async saveProductListing(productData) {
     try {
-      const isModalView = "ingredients" in productData;
+      const isModalView = productData.ingredients !== undefined && productData.ingredients.trim() !== "";
       const validation = validateModalData(productData, isModalView);
 
       if (!validation.isValid) {
@@ -317,6 +317,7 @@ class DatabaseHandler {
       if (productData.ingredients && productData.ingredients.trim() !== "") {
         // Find toxic ingredients using OverlayManager
         const toxinFlags = this.overlayManager.findToxicIngredients(productData.ingredients);
+        console.log("tried to save ingredients", productData.ingredients);
         await this.saveIngredients(
           productGroup.id,
           productData.ingredients,

@@ -21,7 +21,6 @@ async function extractProductFromList(listItem) {
       ...getPriceInfo(listItem),
       ...sizeInfo,
       image_url: getImageUrl(listItem),
-      // attributes: getAttributes(listItem),
     };
   } catch (error) {
     console.error("Error extracting product from list:", error);
@@ -291,6 +290,7 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
     const retailerId = listData ? listData.retailerId : await retailerConfig.getRetailerId(window.location.href);
 
     let name, external_id, url_path, ingredients, price_amount;
+    console.log("sourcetype", sourceType);
 
     if (sourceType === "modal") {
       name = getModalName(sourceContent);
@@ -315,7 +315,16 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
 
     // Extract brand from name
     const brand = name ? extractBrandFromName(name) : "";
-
+    console.log("listData", listData);
+    console.log("all stuff extracted", {
+      name,
+      brand,
+      external_id,
+      url_path,
+      retailerId,
+      ingredients,
+      price_amount,
+    });
     // Merge with list data if provided, otherwise return extracted data
     if (listData) {
       return {
@@ -357,7 +366,7 @@ function getProductPageName(sourceContent) {
   const nameSelectors = [
     ".e-6vf2xs", // Modal name selector
     '[data-testid="item_details_title"]', // Modal fallback
-    ".e-76rf0 h1", // Product page potential selector
+    ".e-76rf0 span", // Product page potential selector
     '.e-76rf0 [data-testid="item_details_title"]', // Another potential selector
   ];
 
@@ -416,31 +425,29 @@ function getProductPageIngredients(sourceContent) {
 function getProductPagePrice(sourceContent) {
   // Try multiple selectors for price
   const priceSelectors = [
-    ".e-76rf0 .e-1ip314g", // Price selector on product page
-    ".e-1ip314g", // Generic price selector
+    ".e-jln0k3 > .e-0", // Price selector on product page
   ];
 
   for (const selector of priceSelectors) {
     const priceElement = sourceContent.querySelector(selector);
     if (priceElement) {
-      // Get all text nodes to handle superscript numbers
-      const textNodes = Array.from(priceElement.childNodes)
-        .filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE)
-        .map((node) => node.textContent.trim())
-        .join("");
+      // // Get all text nodes to handle superscript numbers
+      // const textNodes = Array.from(priceElement.childNodes)
+      //   .filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE)
+      //   .map((node) => node.textContent.trim())
+      //   .join("");
 
       // Remove dollar sign and any whitespace
-      const priceText = textNodes.replace("$", "").replace(/\s+/g, "");
+      const priceText = priceElement.textContent.replace("$", "").replace(/\s+/g, "");
 
       // Convert to cents then to dollars
       if (priceText) {
-        const cents = parseInt(priceText, 10);
-        return cents / 100;
+        return parseFloat(priceText);
       }
     }
   }
 
-  return null;
+  return 0;
 }
 
 export { extractProductFromList, processProductList, extractProductFromSource };
