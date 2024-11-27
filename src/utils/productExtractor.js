@@ -37,7 +37,7 @@ function extractBrandFromName(name) {
   // 2. Brand Name® Product Description
   // 3. Brand Name™ Product Description
   // 4. BRAND NAME Product Description
-  console.log("extractBrandFromName:");
+
   // Try to find brand by looking for common separators
   const separators = [" - ", " – ", "®", "™", ":"];
   for (const separator of separators) {
@@ -126,7 +126,7 @@ function extractSizeFromName(name) {
     volume: /\b(?:fl oz|fluid ounce|fluid ounces|ml|milliliter|milliliters)\b/i,
     count: /\b(?:count|ct|pack|pk|piece|pieces)\b/i,
   };
-  console.log("extractSizeFromName:");
+
   // Try to find size information in the name after a comma
   const parts = name.split(",");
   if (parts.length > 1) {
@@ -203,7 +203,7 @@ function parseSizeAndUnit(sizeText) {
 function getImageUrl(element) {
   const img = element.querySelector('img[data-testid="item-card-image"]');
   if (!img) return "";
-  console.log("getImageUrl:");
+
   // Get first source from srcset (highest quality)
   const srcset = img.getAttribute("srcset");
   if (srcset) {
@@ -295,7 +295,6 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
     const retailerId = listData ? listData.retailerId : await retailerConfig.getRetailerId(window.location.href);
 
     let name, external_id, url_path, ingredients, price_amount;
-    console.log("sourcetype", sourceType);
 
     if (sourceType === "modal") {
       name = getModalName(sourceContent);
@@ -320,16 +319,6 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
 
     // Extract brand from name
     const brand = name ? extractBrandFromName(name) : "";
-    console.log("listData", listData);
-    console.log("all stuff extracted", {
-      name,
-      brand,
-      external_id,
-      url_path,
-      retailerId,
-      ingredients,
-      price_amount,
-    });
     // Merge with list data if provided, otherwise return extracted data
     if (listData) {
       return {

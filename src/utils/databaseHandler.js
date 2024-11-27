@@ -278,7 +278,6 @@ class DatabaseHandler {
       // Extract product info using normalized name
       const productInfo = extractProductInfo(productData.name);
       // Step 1: Find or create product group
-      console.log("productInfo", productInfo);
       const productGroup = await this.findOrCreateProductGroup(productInfo);
 
       if (!productGroup) {
@@ -317,7 +316,6 @@ class DatabaseHandler {
       if (productData.ingredients && productData.ingredients.trim() !== "") {
         // Find toxic ingredients using OverlayManager
         const toxinFlags = this.overlayManager.findToxicIngredients(productData.ingredients);
-        console.log("tried to save ingredients", productData.ingredients);
         await this.saveIngredients(
           productGroup.id,
           productData.ingredients,

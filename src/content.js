@@ -28,7 +28,7 @@ class ProductScanner {
       this.setupMutationObserver();
 
       this.dbHandler = new DatabaseHandler();
-      console.log("Database handler initialized successfully");
+      console.log("Database handler initialized successfully.");
 
       await this.loadSettings();
 
@@ -37,11 +37,7 @@ class ProductScanner {
 
       // Listen for navigation events
       navigation.addEventListener("navigate", (e) => {
-        console.log("Navigation event detected", e);
         // Only trigger if URL actually changed
-
-        // still showing the same page even though the URL changed
-        console.log("URL changed from", this.lastUrl, "to", e.destination.url);
         if (this.lastUrl !== e.destination.url) {
           this.lastUrl = e.destination.url;
           this.handleNavigation();
@@ -53,8 +49,6 @@ class ProductScanner {
   }
 
   handleNavigation() {
-    console.log("Handling navigation");
-
     // Clear any existing navigation timeout
     if (this.navigationTimeout) {
       clearTimeout(this.navigationTimeout);
@@ -69,13 +63,8 @@ class ProductScanner {
     const resetContainer = () => {
       const container = this.findProductContainer();
       if (container) {
-        console.log(
-          "Found container during navigation, current data-processed:",
-          container.getAttribute("data-processed")
-        );
         container.removeAttribute("data-processed");
         this.overlayManager.removeExistingOverlays(container);
-        console.log("Removed data-processed attribute and overlays");
         return container;
       }
       return null;
@@ -86,22 +75,16 @@ class ProductScanner {
 
     // Set a short timeout to allow DOM to update
     setTimeout(() => {
-      console.log("Short timeout check");
       const container = resetContainer();
       if (container) {
-        console.log("Processing container after short delay");
-        // this.processProductPage(container);
         this.handlePageChanges();
       }
     }, 100);
 
     // Set backup timeout with longer delay
     this.navigationTimeout = setTimeout(() => {
-      console.log("Long timeout check");
       const container = resetContainer();
       if (container) {
-        console.log("Processing container after long delay");
-        // this.processProductPage(container);
         this.handlePageChanges();
       }
     }, 500);
@@ -111,8 +94,6 @@ class ProductScanner {
     for (const selector of this.productPageSelectors) {
       const container = document.querySelector(selector);
       if (container) {
-        console.log(`Found product container with selector: ${selector}`);
-        console.log("Container data-processed attribute:", container.getAttribute("data-processed"));
         return container;
       }
     }
@@ -205,16 +186,11 @@ class ProductScanner {
   }
 
   handlePageChanges() {
-    console.log("Handle page changes called");
-
     // Find product container using multiple selectors
     const productPageContainer = this.findProductContainer();
     const hasProcessed = productPageContainer?.hasAttribute("data-processed");
-    console.log("data-processed:", hasProcessed);
 
     if (productPageContainer && !hasProcessed && !this.processingPage) {
-      console.log("Product container found and not processed:", productPageContainer);
-
       let modalElement = productPageContainer.closest(".__reakit-portal");
       if (modalElement) {
         const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
@@ -226,12 +202,9 @@ class ProductScanner {
           }
         }
       } else {
-        console.log("Processing product page");
         this.processProductPage(productPageContainer);
         return;
       }
-    } else if (productPageContainer && hasProcessed) {
-      console.log("Container already processed, skipping");
     }
 
     // Process list items and modals
@@ -285,7 +258,6 @@ class ProductScanner {
       if (this.dbHandler) {
         try {
           const formattedData = this.formatProductData(rawProductData);
-          console.log("Formatted in db product data:", formattedData);
           await this.dbHandler.saveProductListing(formattedData);
         } catch (error) {
           console.error("Error saving product to database:", error);
@@ -412,23 +384,18 @@ class ProductScanner {
 
   async processProductPage(productPageContainer) {
     if (this.processingPage) {
-      console.log("Already processing page, skipping");
       return;
     }
 
     this.processingPage = true;
-    console.log("Process product page started");
 
     try {
-      console.log("Removing existing overlays");
       this.overlayManager.removeExistingOverlays(productPageContainer);
 
       // Extract product details from the page
       const rawProductData = await extractProductFromSource(document, "product_page");
-      console.log("Raw product data:", rawProductData);
 
       if (!rawProductData) {
-        console.log("No raw product data found");
         // Create overlay with no data state
         this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
         return;
@@ -439,17 +406,14 @@ class ProductScanner {
         try {
           // Format the data before saving
           const formattedData = this.formatProductData(rawProductData);
-          console.log("Formatted product data:", formattedData);
           // Save the product listing first
           await this.dbHandler.saveProductListing(formattedData);
 
           // Process ingredients and create overlay
           const toxinFlags = this.overlayManager.findToxicIngredients(rawProductData.ingredients);
-          console.log("Toxin flags found:", toxinFlags);
 
           // Create overlay with actual data (only once)
           if (!productPageContainer.querySelector(".toxic-badge")) {
-            console.log("Creating overlay with toxin data");
             this.overlayManager.createOverlay(productPageContainer, { toxin_flags: toxinFlags || [] });
           }
         } catch (error) {
