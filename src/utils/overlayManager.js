@@ -43,7 +43,7 @@ export class OverlayManager {
   }
 
   findToxicIngredients(ingredients) {
-    if (!ingredients) return [];
+    if (!ingredients || ingredients.trim() == "") return [];
 
     // Split ingredients string into array and clean up
     const ingredientList = ingredients

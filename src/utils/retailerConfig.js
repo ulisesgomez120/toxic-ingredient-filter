@@ -62,6 +62,7 @@ class RetailerConfig {
 
   extractStoreFromUrl(url) {
     try {
+      console.log("extractStoreFromUrl:");
       const parsedUrl = new URL(url);
       const pathParts = parsedUrl.pathname.split("/");
       const storeIndex = pathParts.indexOf("store");

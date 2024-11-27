@@ -30,14 +30,14 @@ async function extractProductFromList(listItem) {
 
 // Helper function to extract brand from product name
 function extractBrandFromName(name) {
-  if (!name) return "";
+  if (!name || name.trim() == "") return "";
 
   // Common brand patterns:
   // 1. Brand Name - Product Description
   // 2. Brand Name® Product Description
   // 3. Brand Name™ Product Description
   // 4. BRAND NAME Product Description
-
+  console.log("extractBrandFromName:");
   // Try to find brand by looking for common separators
   const separators = [" - ", " – ", "®", "™", ":"];
   for (const separator of separators) {
@@ -116,12 +116,17 @@ function getPriceInfo(element) {
 
 function extractSizeFromName(name) {
   // Common units and their variations
+  if (!name || name.trim() == "")
+    return {
+      size: "",
+      base_unit: "",
+    };
   const units = {
     weight: /\b(?:lb|lbs|pound|pounds|oz|ounce|ounces)\b/i,
     volume: /\b(?:fl oz|fluid ounce|fluid ounces|ml|milliliter|milliliters)\b/i,
     count: /\b(?:count|ct|pack|pk|piece|pieces)\b/i,
   };
-
+  console.log("extractSizeFromName:");
   // Try to find size information in the name after a comma
   const parts = name.split(",");
   if (parts.length > 1) {
@@ -198,7 +203,7 @@ function parseSizeAndUnit(sizeText) {
 function getImageUrl(element) {
   const img = element.querySelector('img[data-testid="item-card-image"]');
   if (!img) return "";
-
+  console.log("getImageUrl:");
   // Get first source from srcset (highest quality)
   const srcset = img.getAttribute("srcset");
   if (srcset) {

@@ -137,12 +137,12 @@ class DatabaseHandler {
 
   async findOrCreateProductGroup(productInfo) {
     try {
-      if (!productInfo.baseName || productInfo.baseName.trim() === "") {
+      if (!productInfo.name || productInfo.name.trim() === "") {
         throw new Error("Base name is required for product group");
       }
 
       const normalizedBrand = normalizeProductName(productInfo.brand);
-      const normalizedBaseName = normalizeProductName(productInfo.baseName);
+      const normalizedBaseName = normalizeProductName(productInfo.name);
 
       // Search using only normalized base name
       const searchResponse = await fetch(
@@ -153,7 +153,6 @@ class DatabaseHandler {
       );
 
       const existingGroups = await this.handleResponse(searchResponse, "Failed to search for product group");
-
       if (existingGroups && existingGroups.length > 0) {
         // Update the existing group with new brand if needed
         const existingGroup = existingGroups[0];
@@ -178,7 +177,7 @@ class DatabaseHandler {
         headers: this.getHeaders("return=representation"),
         body: JSON.stringify({
           brand: productInfo.brand,
-          base_name: productInfo.baseName,
+          base_name: productInfo.name,
           normalized_base_name: normalizedBaseName,
           normalized_brand: normalizedBrand,
           created_at: new Date().toISOString(),
@@ -279,6 +278,7 @@ class DatabaseHandler {
       // Extract product info using normalized name
       const productInfo = extractProductInfo(productData.name);
       // Step 1: Find or create product group
+      console.log("productInfo", productInfo);
       const productGroup = await this.findOrCreateProductGroup(productInfo);
 
       if (!productGroup) {
@@ -288,10 +288,10 @@ class DatabaseHandler {
       // Step 2: Find or create product variant
       const product = await this.findOrCreateProduct({
         productGroupId: productGroup.id,
-        name: productData.name,
-        baseUnit: productData.baseUnit,
-        size: productData.size,
-        nutrition: productData.nutrition,
+        name: productInfo.name,
+        baseUnit: productInfo.baseUnit,
+        size: productInfo.size,
+        nutrition: productInfo.nutrition,
       });
 
       if (!product) {

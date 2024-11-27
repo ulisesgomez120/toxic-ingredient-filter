@@ -19,6 +19,7 @@ class ProductScanner {
     this.observerTimeout = null;
     this.navigationTimeout = null;
     this.lastProcessedTime = 0;
+    this.lastUrl = window.location.href;
   }
 
   async init() {
@@ -36,8 +37,15 @@ class ProductScanner {
 
       // Listen for navigation events
       navigation.addEventListener("navigate", (e) => {
-        console.log("Navigation event detected");
-        this.handleNavigation();
+        console.log("Navigation event detected", e);
+        // Only trigger if URL actually changed
+
+        // still showing the same page even though the URL changed
+        console.log("URL changed from", this.lastUrl, "to", e.destination.url);
+        if (this.lastUrl !== e.destination.url) {
+          this.lastUrl = e.destination.url;
+          this.handleNavigation();
+        }
       });
     } catch (error) {
       console.error("Failed to initialize:", error);
@@ -45,30 +53,58 @@ class ProductScanner {
   }
 
   handleNavigation() {
+    console.log("Handling navigation");
+
     // Clear any existing navigation timeout
     if (this.navigationTimeout) {
       clearTimeout(this.navigationTimeout);
     }
 
-    // Process immediately first
-    const productPageContainer = this.findProductContainer();
-    if (productPageContainer && !this.processingPage) {
-      console.log("Product container found immediately, processing page");
-      productPageContainer.removeAttribute("data-processed");
-      this.overlayManager.removeExistingOverlays(productPageContainer);
-      this.handlePageChanges();
-    }
+    // Reset processing state
+    this.processingPage = false;
 
-    // Set backup timeout with shorter delay
-    this.navigationTimeout = setTimeout(() => {
-      console.log("Checking for product container after delay");
-      const delayedContainer = this.findProductContainer();
-      if (delayedContainer && !this.processingPage && !delayedContainer.hasAttribute("data-processed")) {
-        console.log("Product container found after delay, processing page");
-        this.overlayManager.removeExistingOverlays(delayedContainer);
+    // Clear processed items set
+    this.processedItems.clear();
+
+    const resetContainer = () => {
+      const container = this.findProductContainer();
+      if (container) {
+        console.log(
+          "Found container during navigation, current data-processed:",
+          container.getAttribute("data-processed")
+        );
+        container.removeAttribute("data-processed");
+        this.overlayManager.removeExistingOverlays(container);
+        console.log("Removed data-processed attribute and overlays");
+        return container;
+      }
+      return null;
+    };
+
+    // Immediate reset and check
+    resetContainer();
+
+    // Set a short timeout to allow DOM to update
+    setTimeout(() => {
+      console.log("Short timeout check");
+      const container = resetContainer();
+      if (container) {
+        console.log("Processing container after short delay");
+        // this.processProductPage(container);
         this.handlePageChanges();
       }
-    }, 250); // Reduced from 500ms to 250ms
+    }, 100);
+
+    // Set backup timeout with longer delay
+    this.navigationTimeout = setTimeout(() => {
+      console.log("Long timeout check");
+      const container = resetContainer();
+      if (container) {
+        console.log("Processing container after long delay");
+        // this.processProductPage(container);
+        this.handlePageChanges();
+      }
+    }, 500);
   }
 
   findProductContainer() {
@@ -76,6 +112,7 @@ class ProductScanner {
       const container = document.querySelector(selector);
       if (container) {
         console.log(`Found product container with selector: ${selector}`);
+        console.log("Container data-processed attribute:", container.getAttribute("data-processed"));
         return container;
       }
     }
@@ -162,7 +199,8 @@ class ProductScanner {
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: false,
+      attributes: true,
+      attributeFilter: ["data-processed"], // Also watch for data-processed changes
     });
   }
 
@@ -171,8 +209,11 @@ class ProductScanner {
 
     // Find product container using multiple selectors
     const productPageContainer = this.findProductContainer();
-    if (productPageContainer && !productPageContainer.hasAttribute("data-processed") && !this.processingPage) {
-      console.log("Product container found:", productPageContainer);
+    const hasProcessed = productPageContainer?.hasAttribute("data-processed");
+    console.log("data-processed:", hasProcessed);
+
+    if (productPageContainer && !hasProcessed && !this.processingPage) {
+      console.log("Product container found and not processed:", productPageContainer);
 
       let modalElement = productPageContainer.closest(".__reakit-portal");
       if (modalElement) {
@@ -186,11 +227,11 @@ class ProductScanner {
         }
       } else {
         console.log("Processing product page");
-        this.processProductPage(productPageContainer).then(() => {
-          productPageContainer.setAttribute("data-processed", "true");
-        });
+        this.processProductPage(productPageContainer);
         return;
       }
+    } else if (productPageContainer && hasProcessed) {
+      console.log("Container already processed, skipping");
     }
 
     // Process list items and modals
@@ -244,7 +285,7 @@ class ProductScanner {
       if (this.dbHandler) {
         try {
           const formattedData = this.formatProductData(rawProductData);
-
+          console.log("Formatted in db product data:", formattedData);
           await this.dbHandler.saveProductListing(formattedData);
         } catch (error) {
           console.error("Error saving product to database:", error);
@@ -370,7 +411,11 @@ class ProductScanner {
   }
 
   async processProductPage(productPageContainer) {
-    if (this.processingPage) return;
+    if (this.processingPage) {
+      console.log("Already processing page, skipping");
+      return;
+    }
+
     this.processingPage = true;
     console.log("Process product page started");
 
@@ -426,6 +471,10 @@ class ProductScanner {
       }
     } finally {
       this.processingPage = false;
+      // Only set data-processed if we successfully created an overlay
+      if (productPageContainer.querySelector(".toxic-badge")) {
+        productPageContainer.setAttribute("data-processed", "true");
+      }
     }
   }
 

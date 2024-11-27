@@ -24,21 +24,21 @@ export const normalizeProductName = (name) => {
  * @param {string} name - The full product name
  * @returns {Object} - Object containing brand and base name info
  */
-export const extractProductInfo = (name) => {
-  if (!name) return { brand: "", baseName: name || "" };
+export const extractProductInfo = (prodName) => {
+  if (!prodName || prodName.trim() == "") return { brand: "", name: prodName || "" };
 
   // Common brand-name separators
   const separators = [" - ", " – ", " : ", ": ", " | ", "|", ","];
 
   // First try with explicit separators
   for (const separator of separators) {
-    if (name.includes(separator)) {
-      const [brandPart, ...rest] = name.split(separator);
+    if (prodName.includes(separator)) {
+      const [brandPart, ...rest] = prodName.split(separator);
       const baseName = rest.join(separator).trim();
       if (baseName) {
         return {
           brand: brandPart.trim(),
-          baseName: baseName,
+          name: baseName.trim(),
           normalizedBrand: normalizeProductName(brandPart),
           normalizedBaseName: normalizeProductName(baseName),
         };
@@ -48,10 +48,10 @@ export const extractProductInfo = (name) => {
 
   // If no separator found, use the full name as both brand and base_name
   return {
-    brand: name.trim(),
-    baseName: name.trim(),
-    normalizedBrand: normalizeProductName(name),
-    normalizedBaseName: normalizeProductName(name),
+    brand: prodName.trim(),
+    name: prodName.trim(),
+    normalizedBrand: normalizeProductName(prodName),
+    normalizedBaseName: normalizeProductName(prodName),
   };
 };
 

@@ -95,7 +95,7 @@ export class ProductDataManager {
             // Try to find existing product group
             const productGroup = await this.dbHandler.findOrCreateProductGroup({
               brand: formattedData.brand,
-              baseName: formattedData.name,
+              name: formattedData.name,
             });
 
             if (productGroup) {
