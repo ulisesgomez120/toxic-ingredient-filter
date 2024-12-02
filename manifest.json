@@ -17,12 +17,15 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["src/utils/productExtractor.js"],
+      "resources": ["src/content.js"],
       "matches": ["*://*.instacart.com/*"]
     }
   ],
   "options_page": "src/options/options.html",
   "action": {
     "default_popup": "src/popup/popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'"
   }
 }
