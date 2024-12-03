@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Authentication Callback</title>
+    <style>
+      body {
+        width: 300px;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        text-align: center;
+      }
+      .spinner {
+        width: 40px;
+        height: 40px;
+        margin: 20px auto;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .error {
+        color: #e74c3c;
+        margin-top: 20px;
+      }
+      .success {
+        color: #2ecc71;
+        margin-top: 20px;
+      }
+    </style>
+    <script type="module">
+      import { authService } from "../utils/authService.js";
+
+      async function handleAuthCallback() {
+        try {
+          const hash = window.location.hash;
+          if (!hash) {
+            throw new Error("No authentication data received");
+          }
+
+          // Show loading state
+          document.getElementById("status").textContent = "Completing authentication...";
+          document.getElementById("spinner").style.display = "block";
+
+          // Handle the callback
+          await authService.handleCallback(hash);
+
+          // Show success message
+          document.getElementById("status").textContent = "Authentication successful!";
+          document.getElementById("status").className = "success";
+          document.getElementById("spinner").style.display = "none";
+
+          // Close the window after a short delay
+          setTimeout(() => {
+            window.close();
+          }, 1500);
+        } catch (error) {
+          console.error("Auth callback error:", error);
+          document.getElementById("status").textContent = "Authentication failed. Please try again.";
+          document.getElementById("status").className = "error";
+          document.getElementById("spinner").style.display = "none";
+        }
+      }
+
+      // Initialize when the page loads
+      window.addEventListener("load", handleAuthCallback);
+    </script>
+  </head>
+  <body>
+    <div id="spinner" class="spinner"></div>
+    <p id="status">Initializing authentication...</p>
+  </body>
+</html>

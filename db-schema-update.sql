@@ -1,63 +1,88 @@
--- Update product_groups table to check only unique base_name
+-- Add auth and subscription tables
 
--- Add normalized_base_name column if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT column_name 
-                   FROM information_schema.columns 
-                   WHERE table_name='product_groups' AND column_name='normalized_base_name') THEN
-        ALTER TABLE product_groups 
-        ADD COLUMN normalized_base_name VARCHAR(255) GENERATED ALWAYS AS (
-            lower(
-                regexp_replace(
-                    regexp_replace(base_name, '[®™]', '', 'g'),  -- Remove trademark symbols
-                    '[^a-z0-9\s-]', '', 'g'  -- Remove special characters
-                )
-            )
-        ) STORED;
-    END IF;
-END $$;
+-- Users table for authentication
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login TIMESTAMP WITH TIME ZONE,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
 
--- Drop existing unique constraint on (brand, base_name)
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT constraint_name 
-        FROM information_schema.table_constraints 
-        WHERE table_name = 'product_groups' 
-        AND constraint_type = 'UNIQUE' 
-        AND constraint_name = 'product_groups_brand_base_name_key'
-    ) THEN
-        ALTER TABLE product_groups 
-        DROP CONSTRAINT product_groups_brand_base_name_key;
-    END IF;
-END $$;
+-- Subscriptions table
+CREATE TABLE subscriptions (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) NOT NULL,
+    stripe_customer_id TEXT UNIQUE,
+    stripe_subscription_id TEXT UNIQUE,
+    tier TEXT NOT NULL CHECK (tier IN ('basic', 'pro')),
+    status TEXT NOT NULL CHECK (status IN ('active', 'past_due', 'canceled', 'incomplete')),
+    current_period_start TIMESTAMP WITH TIME ZONE,
+    current_period_end TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- Create unique constraint on normalized_base_name
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT constraint_name 
-        FROM information_schema.table_constraints 
-        WHERE table_name = 'product_groups' 
-        AND constraint_type = 'UNIQUE' 
-        AND constraint_name = 'product_groups_normalized_base_name_unique'
-    ) THEN
-        ALTER TABLE product_groups 
-        ADD CONSTRAINT product_groups_normalized_base_name_unique UNIQUE (normalized_base_name);
-    END IF;
-END $$;
+-- Subscription history for auditing
+CREATE TABLE subscription_events (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    subscription_id UUID REFERENCES subscriptions(id),
+    event_type TEXT NOT NULL,
+    event_data JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- Create an index for faster lookups
-DO $$
+-- Create indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_subscriptions_user ON subscriptions(user_id);
+CREATE INDEX idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX idx_subscription_events_subscription ON subscription_events(subscription_id);
+
+-- Create RLS policies
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_events ENABLE ROW LEVEL SECURITY;
+
+-- Users can only read their own data
+CREATE POLICY users_read_own ON users
+    FOR SELECT
+    USING (auth.uid() = id);
+
+-- Users can only read their own subscriptions
+CREATE POLICY subscriptions_read_own ON subscriptions
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Only service role can insert/update subscription data
+CREATE POLICY subscriptions_service_write ON subscriptions
+    FOR ALL
+    USING (auth.role() = 'service_role');
+
+-- Function to check if a user has an active subscription
+CREATE OR REPLACE FUNCTION public.has_active_subscription(user_uuid UUID)
+RETURNS BOOLEAN AS $$
 BEGIN
-    IF NOT EXISTS (
-        SELECT indexname 
-        FROM pg_indexes 
-        WHERE tablename = 'product_groups' 
-        AND indexname = 'idx_product_groups_normalized_base_name'
-    ) THEN
-        CREATE INDEX idx_product_groups_normalized_base_name 
-        ON product_groups (normalized_base_name);
-    END IF;
-END $$;
+    RETURN EXISTS (
+        SELECT 1 
+        FROM subscriptions 
+        WHERE user_id = user_uuid 
+        AND status = 'active' 
+        AND current_period_end > NOW()
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get user's subscription tier
+CREATE OR REPLACE FUNCTION public.get_subscription_tier(user_uuid UUID)
+RETURNS TEXT AS $$
+BEGIN
+    RETURN (
+        SELECT tier 
+        FROM subscriptions 
+        WHERE user_id = user_uuid 
+        AND status = 'active' 
+        AND current_period_end > NOW()
+        LIMIT 1
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
