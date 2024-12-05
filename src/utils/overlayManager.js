@@ -1,5 +1,5 @@
 // Import toxic ingredients data
-import { DEFAULT_TOXIC_INGREDIENTS } from "../../defaultIngredients";
+import { DEFAULT_TOXIC_INGREDIENTS } from "../../default-ingredients";
 
 export class OverlayManager {
   constructor() {

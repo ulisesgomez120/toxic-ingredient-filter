@@ -1,6 +1,6 @@
 // src/utils/databaseHandler.js
 
-import { normalizeProductName, extractProductInfo, checkBrandMatch, checkBaseNameMatch } from "./productNameUtils";
+import { normalizeProductName, extractProductInfo } from "./productNameUtils";
 import { OverlayManager } from "./overlayManager"; // Import OverlayManager
 
 // Validation function to check modal data completeness

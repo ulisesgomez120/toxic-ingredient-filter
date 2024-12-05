@@ -14,17 +14,7 @@ class BackgroundService {
   }
 
   async handleMessage(request, sender, sendResponse) {
-    switch (request.type) {
-      case "CHECK_INGREDIENTS":
-        const result = await this.checkIngredients(request.ingredients);
-        sendResponse({ result });
-        break;
-      case "UPDATE_SETTINGS":
-        await this.updateSettings(request.settings);
-        sendResponse({ success: true });
-        break;
-      // Add more message handlers as needed
-    }
+    // Add more message handlers as needed
   }
 }
 
