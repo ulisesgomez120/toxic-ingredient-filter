@@ -2,26 +2,26 @@
 
 ## Context
 
-This Chrome extension helps users identify toxic ingredients in food products on Instacart. Currently, it uses Supabase for data storage and a Google Cloud Function as a proxy. The extension needs to be updated to include user authentication and subscription-based access using Supabase Auth and Stripe.
+This Chrome extension helps users identify toxic ingredients in food products on Instacart. Currently, it uses Supabase for data storage. The extension needs to be updated to include user authentication and subscription-based access using Supabase Auth, Supabase Edge functions, and Stripe.
 
 ## Requirements Overview
 
 1. Implement user authentication using Supabase Auth
 2. Set up subscription management with Stripe
-3. Update the Google Cloud Function proxy to handle auth and subscriptions
+3. Create the Supabase Edge Function proxy to handle auth and subscriptions
 4. Secure all API communications
 
 ## Current Infrastructure
 
-- Backend: Supabase PostgreSQL + Google Cloud Function proxy
+- Backend: Supabase PostgreSQL
 - Frontend: Chrome Extension (content script, background service, popup)
-- Proxy: Node.js function handling Supabase requests
 
 ## Implementation Scope
 
 ### 1. Authentication System
 
 - Implement Supabase Auth integration in the extension
+- Users should stay logged in for at least a month
 - Create auth flow for new installations
 - Handle auth state management
 - Secure API communications
@@ -30,7 +30,7 @@ This Chrome extension helps users identify toxic ingredients in food products on
 
 - Two tiers:
   - Basic ($1.99): Access to default ingredients checking
-  - Pro: Basic + custom ingredients
+  - Pro: ($3.99): Basic + custom ingredients
 - Stripe integration for payment processing
 - Subscription status verification
 - Webhook handling for real-time updates
@@ -40,14 +40,14 @@ This Chrome extension helps users identify toxic ingredients in food products on
 - Remove exposed API keys
 - Implement proper auth token handling
 - Add subscription verification layer
-- Secure webhook endpoints
+- Secure webhook endpoints (supabase edge function?)
 
 ### 4. Feature Access Control
 
 - Gate all functionality behind authentication
 - Implement tier-based feature access
 - Handle expired/invalid subscriptions
-- Subscription status caching (weekly checks)
+- Subscription status caching (weekly checks/monthly)
 
 ## Files to Modify/Create
 
@@ -62,19 +62,19 @@ Please provide implementations for:
 
 2. Backend Updates:
 
-   - Enhanced Google Cloud Function
+   - Supabase Edge Functions, 1 as a proxy for db connection. 1 for stripe webhooks
    - Webhook handlers
    - Subscription verification endpoints
 
 3. Database Schema:
-   - User management tables
+   - User management tables (use supabase auth)
    - Subscription tracking tables
    - Required indexes and relations
 
 ## Technical Considerations
 
 1. The extension should not run any code for unsubscribed users
-2. Subscription status should be cached and checked weekly
+2. (not sure about this one) Subscription status should be cached and checked weekly
 3. All API communications must be secure
 4. Implement proper error handling for auth/subscription failures
 
@@ -94,5 +94,3 @@ The following files can be provided for implementation context:
 3. API endpoint specifications
 4. Security implementation details
 5. Testing guidelines
-
-Would you like me to proceed with providing any specific files or start with a particular component of the implementation?

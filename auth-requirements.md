@@ -13,10 +13,9 @@
 1. Basic Tier ($1.99)
    - Access to default ingredients checking only
    - Using expanded defaultIngredients list
-2. Pro Tier
+2. Pro Tier ($3.99)
    - All basic features
    - Custom ingredient additions
-   - Price TBD
 
 ### Subscription Management
 
@@ -35,26 +34,15 @@
 1. Authentication Flow
 
    - Implement Supabase Auth integration
-   - Update Google Cloud Function to handle auth verification
    - Secure API communications
 
 2. Subscription Verification
 
-   - Cache subscription status (check weekly)
+   - Cache subscription status (check weekly or monthly not sure)
    - Implement Stripe webhook handling
    - Update proxy function to verify subscription status
 
-3. Current Infrastructure
-
-```javascript
-// Google Cloud Function Proxy (Current)
-- Node 20 runtime
-- CORS enabled
-- Environment variables for credentials
-- Basic request forwarding to Supabase
-```
-
-4. Security Updates Needed
+3. Security Updates Needed
 
 - Remove exposed API keys
 - Implement proper auth token handling
