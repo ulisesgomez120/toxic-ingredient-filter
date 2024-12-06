@@ -20,10 +20,20 @@ class ProductScanner {
     this.navigationTimeout = null;
     this.lastProcessedTime = 0;
     this.lastUrl = window.location.href;
+    this.isAuthenticated = false;
+    this.subscriptionStatus = "none";
   }
 
   async init() {
     try {
+      // Check auth status first
+      await this.checkAuthStatus();
+
+      // Only proceed if authenticated
+      if (!this.isAuthenticated) {
+        console.log("User not authenticated. Extension features disabled.");
+        return;
+      }
       // Set up mutation observer first to catch any early changes
       this.setupMutationObserver();
 
@@ -218,6 +228,12 @@ class ProductScanner {
   }
 
   async analyzeProduct(productElement, itemId) {
+    if (!this.isAuthenticated) return;
+
+    // Check feature access before processing
+    const hasAccess = await this.verifyFeatureAccess("basic_scan");
+    if (!hasAccess) return;
+
     if (!itemId || this.processedItems.has(itemId) || productElement.querySelector(".toxic-badge")) return;
 
     try {
@@ -455,6 +471,80 @@ class ProductScanner {
       size: rawData.size,
       ingredients: rawData.ingredients,
     };
+  }
+  async checkAuthStatus() {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "GET_AUTH_STATUS",
+      });
+
+      this.isAuthenticated = response.isAuthenticated;
+
+      if (this.isAuthenticated) {
+        const subResponse = await chrome.runtime.sendMessage({
+          type: "CHECK_SUBSCRIPTION",
+        });
+        this.subscriptionStatus = subResponse.subscriptionStatus;
+      }
+    } catch (error) {
+      console.error("Error checking auth status:", error);
+      this.isAuthenticated = false;
+      this.subscriptionStatus = "none";
+    }
+  }
+
+  setupAuthListener() {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === "AUTH_STATE_CHANGED") {
+        this.handleAuthStateChange(message.authState);
+      }
+    });
+  }
+
+  async handleAuthStateChange(authState) {
+    const wasAuthenticated = this.isAuthenticated;
+    this.isAuthenticated = authState.isAuthenticated;
+    this.subscriptionStatus = authState.subscriptionStatus;
+
+    if (!wasAuthenticated && this.isAuthenticated) {
+      // User just logged in - initialize everything
+      await this.init();
+    } else if (wasAuthenticated && !this.isAuthenticated) {
+      // User logged out - clean up
+      this.cleanup();
+    }
+  }
+
+  cleanup() {
+    // Remove all overlays
+    if (this.overlayManager) {
+      document.querySelectorAll(".toxic-badge").forEach((badge) => badge.remove());
+    }
+
+    // Clear all data
+    this.productListData.clear();
+    this.processedItems.clear();
+
+    // Stop observers
+    if (this.observerTimeout) {
+      clearTimeout(this.observerTimeout);
+    }
+    if (this.navigationTimeout) {
+      clearTimeout(this.navigationTimeout);
+    }
+  }
+
+  async verifyFeatureAccess(feature) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "VERIFY_ACCESS",
+        feature,
+      });
+      return response.hasAccess;
+    } catch (error) {
+      console.error("Error verifying feature access:", error);
+      return false;
+    }
   }
 }
 

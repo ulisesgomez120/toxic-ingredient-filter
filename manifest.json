@@ -3,8 +3,8 @@
   "name": "Toxic Food Filter",
   "version": "1.0.0",
   "description": "Filter out products with potentially harmful ingredients on Instacart",
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["*://*.instacart.com/*"],
+  "permissions": ["storage", "activeTab", "identity"],
+  "host_permissions": ["*://*.instacart.com/*", "*://*.supabase.co/*"],
   "background": {
     "service_worker": "src/background.js"
   },

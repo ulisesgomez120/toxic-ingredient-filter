@@ -1,112 +1,199 @@
-// Popup functionality
+import authManager from "../auth/authManager";
 
 class PopupManager {
   constructor() {
     this.initializeElements();
-    this.loadSettings();
     this.setupEventListeners();
-    this.updateStats();
+    this.initializeAuth();
   }
 
   initializeElements() {
-    this.strictnessSelect = document.getElementById("strictnessLevel");
-    this.scannedCount = document.getElementById("scannedCount");
-    this.toxicCount = document.getElementById("toxicCount");
-    this.customCount = document.getElementById("customCount");
-    this.settingsButton = document.getElementById("openSettings");
-    this.upgradeButton = document.getElementById("upgradePremium");
-  }
+    // Forms
+    this.loginForm = document.getElementById("login-form");
+    this.signupForm = document.getElementById("signup-form");
 
-  async loadSettings() {
-    // Load saved settings from chrome.storage
-    const settings = await new Promise((resolve) => {
-      chrome.storage.sync.get(
-        {
-          strictnessLevel: "moderate",
-          customIngredients: [],
-          stats: {
-            scannedToday: 0,
-            toxicFound: 0,
-          },
-        },
-        resolve
-      );
-    });
+    // Tabs
+    this.tabButtons = document.querySelectorAll(".tab-btn");
 
-    // Apply settings to popup
-    this.strictnessSelect.value = settings.strictnessLevel;
-    this.updateCustomIngredientsCount(settings.customIngredients.length);
+    // Views
+    this.loggedOutView = document.getElementById("logged-out-view");
+    this.loggedInView = document.getElementById("logged-in-view");
 
-    // Update stats
-    if (settings.stats) {
-      this.scannedCount.textContent = settings.stats.scannedToday;
-      this.toxicCount.textContent = settings.stats.toxicFound;
-    }
+    // User info elements
+    this.userEmail = document.getElementById("user-email");
+    this.subStatus = document.getElementById("sub-status");
+
+    // Error messages
+    this.loginError = document.getElementById("login-error");
+    this.signupError = document.getElementById("signup-error");
+
+    // Buttons
+    this.logoutBtn = document.getElementById("logout-btn");
+
+    // Loading spinner
+    this.loadingSpinner = document.getElementById("loading-spinner");
+
+    // Ensure login form is visible initially
+    this.loginForm.classList.remove("hidden");
+    this.signupForm.classList.add("hidden");
   }
 
   setupEventListeners() {
-    // Strictness level change
-    this.strictnessSelect.addEventListener("change", () => {
-      this.saveStrictnessLevel();
+    // Tab switching
+    this.tabButtons.forEach((button) => {
+      button.addEventListener("click", (e) => {
+        e.preventDefault();
+        const tabName = button.dataset.tab;
+        this.switchTab(tabName);
+      });
     });
 
-    // Settings button
-    this.settingsButton.addEventListener("click", () => {
-      chrome.runtime.openOptionsPage();
-    });
+    // Form submissions
+    this.loginForm.addEventListener("submit", (e) => this.handleLogin(e));
+    this.signupForm.addEventListener("submit", (e) => this.handleSignup(e));
 
-    // Upgrade button
-    this.upgradeButton.addEventListener("click", () => {
-      // TODO: Implement premium upgrade flow
-      chrome.tabs.create({ url: "https://example.com/premium-upgrade" });
-    });
+    // Logout
+    this.logoutBtn.addEventListener("click", () => this.handleLogout());
   }
 
-  async saveStrictnessLevel() {
-    const strictnessLevel = this.strictnessSelect.value;
+  async initializeAuth() {
+    this.showLoading();
+    try {
+      // Subscribe to auth state changes
+      authManager.subscribeToAuthChanges((authState) => {
+        this.handleAuthStateChange(authState);
+      });
 
-    // Save to chrome.storage
-    await new Promise((resolve) => {
-      chrome.storage.sync.set({ strictnessLevel }, resolve);
-    });
-
-    // Notify background script of settings update
-    chrome.runtime.sendMessage({
-      type: "UPDATE_SETTINGS",
-      settings: { strictnessLevel },
-    });
+      // Initialize from storage
+      await authManager.initializeFromStorage();
+    } catch (error) {
+      console.error("Error initializing auth:", error);
+    } finally {
+      this.hideLoading();
+    }
   }
 
-  updateCustomIngredientsCount(count) {
-    this.customCount.textContent = `${count}/3`;
+  handleAuthStateChange({ event, session }) {
+    if (event === "SIGNED_IN" || event === "RESTORED_SESSION") {
+      this.showLoggedInView(session.user);
+    } else if (event === "SIGNED_OUT") {
+      this.showLoggedOutView();
+    }
   }
 
-  async updateStats() {
-    // Get current tab to check if we're on Instacart
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const isInstacart = tab.url.includes("instacart.com");
+  async handleLogin(e) {
+    e.preventDefault();
+    this.showLoading();
+    this.clearErrors();
 
-    // Update status indicator
-    const statusElement = document.querySelector(".status");
-    if (isInstacart) {
-      statusElement.textContent = "Active";
-      statusElement.style.backgroundColor = "#2ecc71";
-    } else {
-      statusElement.textContent = "Inactive";
-      statusElement.style.backgroundColor = "#95a5a6";
+    const email = document.getElementById("login-email").value;
+    const password = document.getElementById("login-password").value;
+
+    try {
+      await authManager.signInWithEmail(email, password);
+      this.loginForm.reset();
+    } catch (error) {
+      this.loginError.textContent = error.message || "Failed to login. Please try again.";
+    } finally {
+      this.hideLoading();
+    }
+  }
+
+  async handleSignup(e) {
+    e.preventDefault();
+    this.showLoading();
+    this.clearErrors();
+
+    const email = document.getElementById("signup-email").value;
+    const password = document.getElementById("signup-password").value;
+    const confirmPassword = document.getElementById("signup-confirm-password").value;
+
+    if (password !== confirmPassword) {
+      this.signupError.textContent = "Passwords do not match";
+      this.hideLoading();
+      return;
     }
 
-    // Request latest stats from background script
-    chrome.runtime.sendMessage({ type: "GET_STATS" }, (response) => {
-      if (response && response.stats) {
-        this.scannedCount.textContent = response.stats.scannedToday;
-        this.toxicCount.textContent = response.stats.toxicFound;
+    try {
+      await authManager.signUpWithEmail(email, password);
+      this.signupForm.reset();
+      // Show success message and switch to login tab
+      this.switchTab("login");
+    } catch (error) {
+      this.signupError.textContent = error.message || "Failed to sign up. Please try again.";
+    } finally {
+      this.hideLoading();
+    }
+  }
+
+  async handleLogout() {
+    this.showLoading();
+    try {
+      await authManager.signOut();
+    } catch (error) {
+      console.error("Error signing out:", error);
+    } finally {
+      this.hideLoading();
+    }
+  }
+
+  switchTab(tabName) {
+    // Update tab buttons
+    this.tabButtons.forEach((button) => {
+      if (button.dataset.tab === tabName) {
+        button.classList.add("active");
+      } else {
+        button.classList.remove("active");
       }
     });
+
+    // Show/hide forms
+    if (tabName === "login") {
+      this.loginForm.classList.remove("hidden");
+      this.signupForm.classList.add("hidden");
+    } else {
+      this.loginForm.classList.add("hidden");
+      this.signupForm.classList.remove("hidden");
+    }
+
+    // Clear forms and errors
+    this.clearErrors();
+    if (tabName === "login") {
+      this.signupForm.reset();
+    } else {
+      this.loginForm.reset();
+    }
+  }
+
+  showLoggedInView(user) {
+    this.loggedOutView.classList.add("hidden");
+    this.loggedInView.classList.remove("hidden");
+    this.userEmail.textContent = user.email;
+    this.subStatus.textContent = "Free";
+  }
+
+  showLoggedOutView() {
+    this.loggedInView.classList.add("hidden");
+    this.loggedOutView.classList.remove("hidden");
+    // Always show login tab when logging out
+    this.switchTab("login");
+  }
+
+  showLoading() {
+    this.loadingSpinner.classList.remove("hidden");
+  }
+
+  hideLoading() {
+    this.loadingSpinner.classList.add("hidden");
+  }
+
+  clearErrors() {
+    this.loginError.textContent = "";
+    this.signupError.textContent = "";
   }
 }
 
-// Initialize popup
+// Initialize popup when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
   new PopupManager();
 });
