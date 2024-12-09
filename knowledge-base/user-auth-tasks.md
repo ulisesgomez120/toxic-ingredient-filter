@@ -48,17 +48,23 @@
   - Using default Supabase auth tables
 - ❌ Add user preferences table
   - Pending implementation
-- ❌ Add user subscription status table
-  - To be implemented with subscription system
+- ✅ Add user subscription status table
+  - Implemented with subscription_tiers and user_subscriptions tables
+  - Added subscription event tracking
+  - Added subscription history
 
 ### b. Access Control:
 
-- ❌ Row Level Security (RLS) policies
-  - To be implemented
-- ❌ API role definitions
-  - To be implemented
-- ❌ Access control functions
-  - To be implemented
+- ✅ Row Level Security (RLS) policies
+  - Implemented for subscription tables
+  - Users can only access their own subscription data
+  - Public access to subscription tiers
+- ✅ API role definitions
+  - Added service role for webhook handling
+  - Added authenticated role for user operations
+- ✅ Access control functions
+  - Added subscription verification functions
+  - Added event processing functions
 
 ## 3. Extension Updates
 
@@ -70,6 +76,8 @@
   - Handled through Supabase client
 - ✅ API request handling
   - Basic implementation complete
+- ✅ Subscription status tracking
+  - Added to background service
 
 ### b. Content Script:
 
@@ -77,6 +85,9 @@
   - Added auth checks before operations
 - ✅ Feature gating based on auth status
   - Basic implementation in place
+- ⏳ Subscription-based feature gating
+  - Framework in place
+  - Needs tier-specific implementation
 
 ### c. Popup:
 
@@ -86,6 +97,9 @@
   - Implemented with validation
 - ✅ Account status display
   - Shows user email and basic status
+- ⏳ Subscription management UI
+  - Basic structure implemented
+  - Needs payment flow integration
 
 ## 4. Security Implementation
 
@@ -115,25 +129,62 @@
    - Add request signing
    - Set up rate limiting
 
-2. Database Schema
+2. Subscription Integration
 
-   - Create user preferences table
-   - Create subscription status table
-   - Implement RLS policies
+   - [ ] Add payment links to subscription tiers
+   - [ ] Configure webhook endpoints
+   - [ ] Test subscription flow
+   - [ ] Implement feature gating based on tier
 
-3. Testing
+3. User Preferences
 
-   - Comprehensive auth flow testing
-   - Security testing
-   - Performance testing
+   - [ ] Create user preferences table
+   - [ ] Add preferences UI to options page
+   - [ ] Implement preferences sync
 
-4. Subscription System
-   - Implement subscription management
-   - Add subscription-based feature gating
-   - Set up payment processing
+4. Testing
+
+   - [ ] Comprehensive auth flow testing
+   - [ ] Security testing
+   - [ ] Performance testing
+   - [ ] Subscription flow testing
+
+5. UI/UX Improvements
+   - [ ] Add subscription status to popup
+   - [ ] Improve error messaging
+   - [ ] Add loading states
+   - [ ] Implement offline support
 
 Legend:
 
 - ✅ Completed
 - ⏳ Partially Complete/In Progress
 - ❌ Not Started
+
+## Implementation Notes
+
+1. Authentication Flow:
+
+   - Using Supabase Auth for reliable authentication
+   - Custom storage adapter for Chrome extension compatibility
+   - Proper session management and token refresh
+
+2. Security Measures:
+
+   - All sensitive operations handled server-side
+   - Proper RLS policies in place
+   - Environment variables for sensitive data
+   - Token-based authentication
+
+3. Extension Architecture:
+
+   - Background service for persistent operations
+   - Content script for page interactions
+   - Popup for user interface
+   - Options page for preferences
+
+4. Database Structure:
+   - Leveraging Supabase Auth tables
+   - Custom tables for subscriptions and preferences
+   - Proper relationships and constraints
+   - Efficient indexes for common queries

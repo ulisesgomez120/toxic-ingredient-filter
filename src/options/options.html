@@ -1,50 +1,151 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Toxic Food Filter - Options</title>
+    <title>Toxic Food Filter - Settings</title>
     <link rel="stylesheet" href="options.css" />
   </head>
   <body>
-    <div class="container">
-      <h1>Toxic Food Filter Settings</h1>
-
-      <section class="settings-section">
-        <h2>Filter Strictness</h2>
-        <select id="strictnessLevel">
-          <option value="strict">Strict</option>
-          <option value="moderate" selected>Moderate</option>
-          <option value="lenient">Lenient</option>
-        </select>
-      </section>
-
-      <section class="settings-section">
-        <h2>Custom Ingredients</h2>
-        <div class="custom-ingredients">
-          <input type="text" id="newIngredient" placeholder="Enter ingredient name" />
-          <button id="addIngredient">Add</button>
+    <div class="options-container">
+      <header class="header">
+        <h1>Toxic Food Filter Settings</h1>
+        <div id="user-info">
+          <span id="user-email"></span>
+          <button id="logout-btn">Sign Out</button>
         </div>
-        <ul id="customIngredientsList">
-          <!-- Custom ingredients will be listed here -->
-        </ul>
-        <p class="note">Free tier allows up to 3 custom ingredients</p>
-      </section>
+      </header>
 
-      <section class="settings-section">
-        <h2>Visual Settings</h2>
-        <div class="visual-settings">
-          <label>
-            <input type="checkbox" id="showTooltips" checked />
-            Show ingredient tooltips on hover
-          </label>
-          <label>
-            <input type="checkbox" id="highlightProducts" checked />
-            Apply overlay to products with toxic ingredients
-          </label>
+      <main class="main-content">
+        <!-- Subscription Management -->
+        <section class="section" id="subscription-section">
+          <h2>Subscription</h2>
+          <div class="subscription-details">
+            <div class="current-plan">
+              <h3>Current Plan</h3>
+              <div class="plan-info">
+                <div id="plan-badge" class="badge"></div>
+                <div id="plan-expiry" class="expiry"></div>
+              </div>
+            </div>
+
+            <div class="subscription-features">
+              <h3>Features</h3>
+              <ul id="features-list"></ul>
+            </div>
+
+            <div class="subscription-actions">
+              <button id="upgrade-btn" class="primary-btn">Upgrade Plan</button>
+              <button id="manage-subscription-btn" class="secondary-btn">Manage Subscription</button>
+            </div>
+          </div>
+
+          <div class="subscription-history">
+            <h3>Payment History</h3>
+            <div id="payment-history" class="history-list">
+              <!-- Payment history will be populated dynamically -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Scan Settings -->
+        <section class="section">
+          <h2>Scan Settings</h2>
+          <div class="setting-group">
+            <label for="strictness-level">Strictness Level</label>
+            <select id="strictness-level">
+              <option value="strict">Strict</option>
+              <option value="moderate">Moderate</option>
+              <option value="relaxed">Relaxed</option>
+            </select>
+          </div>
+        </section>
+
+        <!-- Custom Ingredients (Pro Feature) -->
+        <section class="section" id="custom-ingredients-section">
+          <h2>
+            Custom Ingredients
+            <span class="pro-badge">Pro</span>
+          </h2>
+          <div class="custom-ingredients-container">
+            <div id="custom-ingredients-locked" class="feature-locked">
+              <h3>Unlock Custom Ingredients</h3>
+              <p>Upgrade to Pro to add your own ingredients to scan for</p>
+              <button id="unlock-custom-ingredients" class="primary-btn">Upgrade to Pro</button>
+            </div>
+
+            <div id="custom-ingredients-content" class="hidden">
+              <div class="ingredient-list">
+                <div class="ingredient-header">
+                  <h3>Your Custom Ingredients</h3>
+                  <button id="add-ingredient-btn" class="secondary-btn">Add Ingredient</button>
+                </div>
+                <div id="ingredients-container">
+                  <!-- Custom ingredients will be populated dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Notification Settings -->
+        <section class="section">
+          <h2>Notifications</h2>
+          <div class="setting-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="enable-notifications" />
+              Enable Notifications
+            </label>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="version">Version 1.0.0</div>
+        <div class="links">
+          <a href="#" id="privacy-policy">Privacy Policy</a>
+          <a href="#" id="terms-of-service">Terms of Service</a>
+          <a href="#" id="contact-support">Contact Support</a>
         </div>
-      </section>
-
-      <button id="saveSettings" class="save-button">Save Settings</button>
+      </footer>
     </div>
-    <script src="options.js"></script>
+
+    <!-- Add Ingredient Modal -->
+    <div id="add-ingredient-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Add Custom Ingredient</h3>
+        <form id="add-ingredient-form">
+          <div class="form-group">
+            <label for="ingredient-name">Ingredient Name</label>
+            <input type="text" id="ingredient-name" required />
+          </div>
+          <div class="form-group">
+            <label for="ingredient-category">Category</label>
+            <select id="ingredient-category" required>
+              <option value="preservatives">Preservatives</option>
+              <option value="sweeteners">Sweeteners</option>
+              <option value="colorings">Colorings</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="ingredient-concern">Concern Level</label>
+            <select id="ingredient-concern" required>
+              <option value="high">High</option>
+              <option value="moderate">Moderate</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="ingredient-notes">Notes</label>
+            <textarea id="ingredient-notes"></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" id="cancel-add-ingredient" class="secondary-btn">Cancel</button>
+            <button type="submit" class="primary-btn">Add Ingredient</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="../options.js"></script>
   </body>
 </html>

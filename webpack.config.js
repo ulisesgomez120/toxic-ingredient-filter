@@ -1,5 +1,3 @@
-// webpack.config.js
-
 const path = require("path");
 const webpack = require("webpack");
 const DotenvPlugin = require("dotenv-webpack");
@@ -15,7 +13,7 @@ module.exports = {
   },
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "src/[name].js",
+    filename: "[name].js", // Output JS files directly in dist
     clean: true,
   },
   module: {
@@ -39,7 +37,7 @@ module.exports = {
   plugins: [
     // Load environment variables from .env file
     new DotenvPlugin({
-      path: ".env", // Use single .env file
+      path: ".env",
       systemvars: true,
     }),
 
@@ -47,9 +45,30 @@ module.exports = {
     new CopyPlugin({
       patterns: [
         { from: "manifest.json", to: "manifest.json" },
-        { from: "src/popup/popup.html", to: "src/popup/popup.html" },
-        { from: "src/options/options.html", to: "src/options/options.html" },
-        { from: "src/**/*.css", to: "[path][name][ext]" },
+        // Copy HTML files to their respective folders
+        {
+          from: "src/popup/popup.html",
+          to: "popup/popup.html",
+        },
+        {
+          from: "src/options/options.html",
+          to: "options/options.html",
+        },
+        // Copy CSS files to their respective folders
+        {
+          from: "src/popup/popup.css",
+          to: "popup/popup.css",
+        },
+        {
+          from: "src/options/options.css",
+          to: "options/options.css",
+        },
+        // Copy any other CSS files
+        {
+          from: "src/styles",
+          to: "styles",
+          noErrorOnMissing: true,
+        },
       ],
     }),
   ],

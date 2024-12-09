@@ -1,0 +1,17 @@
+{
+  "tasks": {
+    "serve": "deno run --allow-net --allow-env --watch index.ts"
+  },
+  "imports": {
+    "http/": "https://deno.land/std@0.168.0/http/",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.38.4",
+    "stripe": "https://esm.sh/stripe@12.0.0"
+  },
+  "compilerOptions": {
+    "allowJs": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "lib": ["deno.window", "deno.ns", "esnext", "dom"]
+  }
+}

@@ -6,24 +6,24 @@
   "permissions": ["storage", "activeTab", "identity"],
   "host_permissions": ["*://*.instacart.com/*", "*://*.supabase.co/*"],
   "background": {
-    "service_worker": "src/background.js"
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["*://*.instacart.com/*"],
-      "js": ["src/content.js"],
+      "js": ["content.js"],
       "type": "module"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["src/content.js"],
+      "resources": ["content.js"],
       "matches": ["*://*.instacart.com/*"]
     }
   ],
-  "options_page": "src/options/options.html",
+  "options_page": "options/options.html",
   "action": {
-    "default_popup": "src/popup/popup.html"
+    "default_popup": "popup/popup.html"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; worker-src 'self'"

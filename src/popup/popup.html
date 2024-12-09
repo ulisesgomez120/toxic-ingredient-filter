@@ -1,77 +1,105 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Toxic Food Filter</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <div class="popup-container">
-      <!-- Auth Status Section -->
-      <div id="auth-status" class="auth-status">
-        <!-- Logged Out View -->
-        <div id="logged-out-view" class="view">
-          <h2>Welcome to Toxic Food Filter</h2>
+      <!-- Auth Section -->
+      <div id="auth-section">
+        <div id="auth-status" class="status-section">
+          <!-- Logged Out View -->
+          <div id="logged-out" class="auth-state">
+            <div id="auth-tabs">
+              <button class="tab-btn active" data-tab="login">Sign In</button>
+              <button class="tab-btn" data-tab="signup">Create Account</button>
+            </div>
 
-          <!-- Auth Tabs -->
-          <div class="auth-tabs">
-            <button type="button" class="tab-btn active" data-tab="login">Login</button>
-            <button type="button" class="tab-btn" data-tab="signup">Sign Up</button>
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form">
+              <div class="form-group">
+                <input type="email" id="login-email" placeholder="Email" required />
+              </div>
+              <div class="form-group">
+                <input type="password" id="login-password" placeholder="Password" required />
+              </div>
+              <button type="submit" class="primary-btn">Sign In</button>
+              <div class="auth-error hidden"></div>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signup-form" class="auth-form hidden">
+              <div class="form-group">
+                <input type="email" id="signup-email" placeholder="Email" required />
+              </div>
+              <div class="form-group">
+                <input type="password" id="signup-password" placeholder="Password" required />
+                <div class="password-requirements">Password must be at least 6 characters</div>
+              </div>
+              <button type="submit" class="primary-btn">Create Account</button>
+              <div class="auth-error hidden"></div>
+            </form>
           </div>
 
-          <!-- Login Form -->
-          <form id="login-form" class="auth-form">
-            <div class="form-group">
-              <label for="login-email">Email</label>
-              <input type="email" id="login-email" required />
-            </div>
-            <div class="form-group">
-              <label for="login-password">Password</label>
-              <input type="password" id="login-password" required />
-            </div>
-            <button type="submit" class="btn-primary">Login</button>
-            <div id="login-error" class="error-message"></div>
-          </form>
-
-          <!-- Sign Up Form -->
-          <form id="signup-form" class="auth-form hidden">
-            <div class="form-group">
-              <label for="signup-email">Email</label>
-              <input type="email" id="signup-email" required />
-            </div>
-            <div class="form-group">
-              <label for="signup-password">Password</label>
-              <input type="password" id="signup-password" required minlength="6" />
-            </div>
-            <div class="form-group">
-              <label for="signup-confirm-password">Confirm Password</label>
-              <input type="password" id="signup-confirm-password" required minlength="6" />
-            </div>
-            <button type="submit" class="btn-primary">Sign Up</button>
-            <div id="signup-error" class="error-message"></div>
-          </form>
-        </div>
-
-        <!-- Logged In View -->
-        <div id="logged-in-view" class="view hidden">
-          <div class="user-info">
-            <h3>Welcome back!</h3>
-            <p id="user-email"></p>
-            <div class="subscription-status">
-              <p>Subscription Status: <span id="sub-status">Free</span></p>
-            </div>
+          <!-- Logged In View -->
+          <div id="logged-in" class="auth-state hidden">
+            <span id="user-email"></span>
+            <button id="logout-btn" class="text-btn">Sign Out</button>
           </div>
-          <button id="logout-btn" class="btn-secondary">Logout</button>
         </div>
       </div>
 
-      <!-- Loading Spinner -->
-      <div id="loading-spinner" class="loading-spinner hidden">
-        <div class="spinner"></div>
+      <!-- Subscription Section -->
+      <div id="subscription-section" class="hidden">
+        <div class="subscription-status">
+          <h3>Your Subscription</h3>
+          <div id="current-plan" class="plan-badge">
+            <span id="plan-name">Basic</span>
+            <span id="plan-price">$1.99/month</span>
+          </div>
+          <div class="subscription-info">
+            <div id="subscription-expiry"></div>
+            <div id="subscription-features"></div>
+          </div>
+        </div>
+
+        <!-- Subscription Tiers -->
+        <div class="subscription-tiers">
+          <div class="tier-card" id="basic-tier">
+            <h4>Basic</h4>
+            <div class="price">$1.99/month</div>
+            <ul class="features">
+              <li>Basic ingredient scanning</li>
+              <li>Default ingredients database</li>
+              <li>Basic allergen alerts</li>
+            </ul>
+            <button class="tier-btn" data-tier="basic">Select Basic</button>
+          </div>
+
+          <div class="tier-card premium" id="pro-tier">
+            <div class="premium-badge">Most Popular</div>
+            <h4>Pro</h4>
+            <div class="price">$3.99/month</div>
+            <ul class="features">
+              <li>Advanced ingredient scanning</li>
+              <li>Custom ingredients lists</li>
+              <li>Detailed health insights</li>
+              <li>Priority support</li>
+            </ul>
+            <button class="tier-btn" data-tier="pro">Upgrade to Pro</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Link -->
+      <div class="footer">
+        <button id="settings-btn" class="icon-btn">
+          <span class="settings-icon">&#9881;</span>
+          Settings
+        </button>
       </div>
     </div>
-    <!-- webpack is throwing popup.js into the src/ directory and keeping html in the src/popup directory.  -->
     <script src="../popup.js"></script>
   </body>
 </html>
