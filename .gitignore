@@ -48,3 +48,7 @@ webpack-stats.json
 .cache/
 .next/
 .nuxt/
+
+# Supabase
+.branches
+.temp

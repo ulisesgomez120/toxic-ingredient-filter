@@ -4,14 +4,14 @@ import Stripe from "https://esm.sh/stripe@12.0.0";
 
 // Initialize Stripe with the secret key from environment variable
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-  apiVersion: "2023-10-16",
+  apiVersion: "2024-11-20",
   httpClient: Stripe.createFetchHttpClient(),
 });
 
 // Initialize Supabase client
 const supabaseClient = createClient(
-  Deno.env.get("SUPABASE_URL") ?? "",
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  Deno.env.get("DB_SUPABASE_URL") ?? "",
+  Deno.env.get("DB_SUPABASE_SERVICE_ROLE_KEY") ?? ""
 );
 
 // Webhook signing secret for verification
@@ -20,8 +20,18 @@ const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 // Maximum number of retries for failed events
 const MAX_RETRIES = 3;
 
+// CORS headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 async function logEvent(eventData) {
-  const { error } = await supabaseClient.from("subscription_events").insert(eventData);
+  const { error } = await supabaseClient.from("subscription_events").insert({
+    ...eventData,
+    created_at: new Date(),
+  });
 
   if (error) {
     console.error("Error logging event:", error);
@@ -58,6 +68,10 @@ async function checkEventProcessed(eventId) {
 }
 
 async function updateSubscriptionStatus(subscription) {
+  if (!subscription.id) {
+    throw new Error("Missing subscription ID");
+  }
+
   const { error } = await supabaseClient
     .from("user_subscriptions")
     .update({
@@ -77,8 +91,16 @@ async function updateSubscriptionStatus(subscription) {
 }
 
 async function handleSubscriptionCreated(subscription) {
+  // Validate required metadata
+  if (!subscription.metadata?.user_id) {
+    throw new Error("Missing user_id in subscription metadata");
+  }
+
   // Get the price ID to determine the subscription tier
-  const priceId = subscription.items.data[0].price.id;
+  const priceId = subscription.items.data[0]?.price?.id;
+  if (!priceId) {
+    throw new Error("Missing price ID in subscription items");
+  }
 
   // Get the subscription tier ID based on the Stripe price ID
   const { data: tierData, error: tierError } = await supabaseClient
@@ -89,7 +111,7 @@ async function handleSubscriptionCreated(subscription) {
 
   if (tierError || !tierData) {
     console.error("Error finding subscription tier:", tierError);
-    throw tierError;
+    throw new Error(`No subscription tier found for price ID: ${priceId}`);
   }
 
   // Create new subscription record
@@ -103,6 +125,8 @@ async function handleSubscriptionCreated(subscription) {
     current_period_end: new Date(subscription.current_period_end * 1000),
     cancel_at_period_end: subscription.cancel_at_period_end,
     canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
+    created_at: new Date(),
+    updated_at: new Date(),
   });
 
   if (error) {
@@ -111,10 +135,22 @@ async function handleSubscriptionCreated(subscription) {
   }
 }
 
+async function handleChargeSucceeded(charge) {
+  // Log the successful charge
+  console.log(`Payment succeeded: ${charge.id} for amount ${charge.amount}`);
+
+  // If this charge is part of a subscription, we'll wait for the invoice.paid
+  // event to update the subscription status
+  if (charge.invoice) {
+    console.log(`Charge ${charge.id} is part of invoice ${charge.invoice}`);
+  }
+}
+
 async function handleTrialEnding(subscription) {
-  // Notify user about trial ending (implement notification system later)
-  console.log(`Trial ending for subscription: ${subscription.id}`);
   await updateSubscriptionStatus(subscription);
+
+  // TODO: Implement notification system
+  console.log(`Trial ending for subscription: ${subscription.id}`);
 }
 
 async function handlePaymentFailed(invoice) {
@@ -126,7 +162,7 @@ async function handlePaymentFailed(invoice) {
   // Update subscription status
   await updateSubscriptionStatus(subscription);
 
-  // TODO: Implement notification system for failed payments
+  // TODO: Implement notification system
   console.log(`Payment failed for subscription: ${subscription.id}`);
 }
 
@@ -138,6 +174,8 @@ async function handleInvoicePaid(invoice) {
 
   // Update subscription status
   await updateSubscriptionStatus(subscription);
+
+  console.log(`Invoice paid for subscription: ${subscription.id}`);
 }
 
 async function processEvent(event) {
@@ -153,6 +191,10 @@ async function processEvent(event) {
 
     // Handle the event based on type
     switch (event.type) {
+      case "charge.succeeded":
+        await handleChargeSucceeded(event.data.object);
+        break;
+
       case "customer.subscription.created":
         await handleSubscriptionCreated(event.data.object);
         break;
@@ -184,8 +226,12 @@ async function processEvent(event) {
   } catch (error) {
     console.error(`Error processing event ${event.id}:`, error);
 
-    // Log failure
-    await updateEventStatus(event.id, "failed", error instanceof Error ? error.message : "Unknown error");
+    // Log failure with detailed error
+    await updateEventStatus(
+      event.id,
+      "failed",
+      error instanceof Error ? `${error.name}: ${error.message}` : "Unknown error"
+    );
 
     // Rethrow if we haven't exceeded retry limit
     const { data } = await supabaseClient
@@ -201,35 +247,50 @@ async function processEvent(event) {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     if (req.method !== "POST") {
-      return new Response("Method not allowed", { status: 405 });
+      return new Response("Method not allowed", {
+        status: 405,
+        headers: corsHeaders,
+      });
     }
 
     // Get the stripe signature from the headers
     const signature = req.headers.get("stripe-signature");
     if (!signature) {
-      return new Response("No signature", { status: 400 });
+      return new Response("No signature", {
+        status: 400,
+        headers: corsHeaders,
+      });
     }
 
     // Get the raw body
     const body = await req.text();
+    console.log("Received webhook body:", body);
 
     // Verify the webhook signature
     let event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
+      event = await stripe.webhooks.constructEventAsync(body, signature, endpointSecret);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       console.error(`Webhook signature verification failed:`, errorMessage);
-      return new Response(`Webhook signature verification failed: ${errorMessage}`, { status: 400 });
+      return new Response(JSON.stringify({ error: `Webhook signature verification failed: ${errorMessage}` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check if event was already processed
     const isProcessed = await checkEventProcessed(event.id);
     if (isProcessed) {
       return new Response(JSON.stringify({ received: true, status: "already processed" }), {
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
@@ -238,7 +299,7 @@ serve(async (req) => {
     await processEvent(event);
 
     return new Response(JSON.stringify({ received: true }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
@@ -254,7 +315,7 @@ serve(async (req) => {
         message: error instanceof Error ? error.message : "Unknown error",
       }),
       {
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status,
       }
     );

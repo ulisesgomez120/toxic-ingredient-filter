@@ -4,6 +4,7 @@ class AuthManager {
   constructor() {
     this.currentUser = null;
     this.authStateSubscribers = new Set();
+    this.initialized = false;
     this.setupAuthStateChange();
   }
 
@@ -16,7 +17,7 @@ class AuthManager {
 
   // Handle auth state changes
   async handleAuthStateChange(event, session) {
-    console.log("Auth state changed:", event);
+    console.log("Auth state changed:", event, session);
 
     if (event === "SIGNED_IN") {
       this.currentUser = session.user;
@@ -33,9 +34,9 @@ class AuthManager {
   // Subscribe to auth state changes
   subscribeToAuthChanges(callback) {
     this.authStateSubscribers.add(callback);
-    // Immediately call with current state
-    if (this.currentUser) {
-      callback({ event: "INITIAL_STATE", session: { user: this.currentUser } });
+    // Immediately call with current state if initialized
+    if (this.initialized && this.currentUser) {
+      callback({ event: "RESTORED_SESSION", session: { user: this.currentUser } });
     }
   }
 
@@ -56,6 +57,7 @@ class AuthManager {
         "auth.session": session,
         "auth.timestamp": Date.now(),
       });
+      console.log("Session persisted to storage");
     } catch (error) {
       console.error("Error persisting session:", error);
     }
@@ -65,6 +67,7 @@ class AuthManager {
   async clearSession() {
     try {
       await chrome.storage.local.remove(["auth.session", "auth.timestamp"]);
+      console.log("Session cleared from storage");
     } catch (error) {
       console.error("Error clearing session:", error);
     }
@@ -73,8 +76,25 @@ class AuthManager {
   // Get current session
   async getSession() {
     try {
-      const { session } = await supabase.auth.getSession();
-      return session;
+      // If not initialized, initialize first
+      if (!this.initialized) {
+        await this.initializeFromStorage();
+      }
+
+      // Get session from Supabase
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
+      if (error) throw error;
+
+      if (session) {
+        this.currentUser = session.user;
+        return session;
+      }
+
+      return null;
     } catch (error) {
       console.error("Error getting session:", error);
       return null;
@@ -90,7 +110,7 @@ class AuthManager {
       });
 
       if (error) throw error;
-      return data;
+      return { data };
     } catch (error) {
       console.error("Error signing in:", error);
       throw error;
@@ -106,7 +126,7 @@ class AuthManager {
       });
 
       if (error) throw error;
-      return data;
+      return { data };
     } catch (error) {
       console.error("Error signing up:", error);
       throw error;
@@ -137,13 +157,40 @@ class AuthManager {
   // Initialize auth state from storage
   async initializeFromStorage() {
     try {
-      const { session } = await supabase.auth.getSession();
-      if (session) {
-        this.currentUser = session.user;
-        this.notifySubscribers({ event: "RESTORED_SESSION", session });
+      console.log("Initializing from storage...");
+
+      // Get stored session
+      const { "auth.session": storedSession } = await chrome.storage.local.get("auth.session");
+
+      if (storedSession) {
+        console.log("Found stored session, setting auth state");
+        // Set the session in Supabase
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.setSession({
+          access_token: storedSession.access_token,
+          refresh_token: storedSession.refresh_token,
+        });
+
+        if (error) {
+          console.error("Error setting session:", error);
+          await this.clearSession();
+          this.currentUser = null;
+        } else if (session) {
+          console.log("Session restored successfully");
+          this.currentUser = session.user;
+          // Notify subscribers of restored session
+          this.notifySubscribers({ event: "RESTORED_SESSION", session });
+        }
+      } else {
+        console.log("No stored session found");
       }
+
+      this.initialized = true;
     } catch (error) {
       console.error("Error initializing from storage:", error);
+      this.initialized = true; // Still mark as initialized to prevent loops
     }
   }
 }

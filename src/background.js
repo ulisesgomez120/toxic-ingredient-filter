@@ -2,16 +2,19 @@ import authManager from "./auth/authManager";
 
 class BackgroundService {
   constructor() {
-    this.setupAuthSystem();
-    this.setupMessageHandlers();
+    this.initialize();
   }
 
-  async setupAuthSystem() {
+  async initialize() {
     try {
+      // Initialize auth system first
       await authManager.initializeFromStorage();
-      console.log("Auth system initialized");
+      console.log("Auth system initialized in background");
+
+      // Setup message handlers after auth is initialized
+      this.setupMessageHandlers();
     } catch (error) {
-      console.error("Error initializing auth system:", error);
+      console.error("Error initializing background service:", error);
     }
   }
 
@@ -91,14 +94,18 @@ class BackgroundService {
   async checkSubscriptionStatus() {
     try {
       const session = await authManager.getSession();
-      if (!session) return "none";
+      if (!session) {
+        console.log("No session found in checkSubscriptionStatus");
+        return "basic"; // Default to basic if no session
+      }
 
       // TODO: Implement actual subscription check with Supabase
-      // For now, return "basic" for testing
+      // For now, always return basic for testing
+      console.log("Returning basic subscription for user:", session.user.email);
       return "basic";
     } catch (error) {
-      console.error("Error checking subscription:", error);
-      return "error";
+      console.error("Error in checkSubscriptionStatus:", error);
+      return "basic"; // Default to basic on error
     }
   }
 
@@ -111,7 +118,7 @@ class BackgroundService {
 
       switch (feature) {
         case "basic_scan":
-          return true; // Available to all authenticated users
+          return subscriptionStatus === "basic" || subscriptionStatus === "pro";
 
         case "custom_ingredients":
           return subscriptionStatus === "pro";
@@ -209,22 +216,6 @@ class BackgroundService {
       console.error("Error deleting custom ingredient:", error);
       throw error;
     }
-  }
-
-  // Helper method to broadcast auth state changes
-  async broadcastAuthState(authState) {
-    const tabs = await chrome.tabs.query({});
-    tabs.forEach((tab) => {
-      chrome.tabs
-        .sendMessage(tab.id, {
-          type: "AUTH_STATE_CHANGED",
-          authState,
-        })
-        .catch((error) => {
-          // Ignore errors for tabs that can't receive messages
-          console.debug("Could not send auth state to tab:", tab.id);
-        });
-    });
   }
 }
 

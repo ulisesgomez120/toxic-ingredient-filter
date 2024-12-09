@@ -101,21 +101,12 @@
    - [ ] Add 2FA recovery flow
    - [ ] Add 2FA bypass for trusted devices
 
-### c. Portal Integration:
+### b.2
 
-1. Customer Portal:
-
-   - [ ] Create portal link endpoint
-   - [ ] Add portal session creation
-   - [ ] Handle portal callbacks
-   - [ ] Add portal navigation
-   - [ ] Implement portal state sync
-
-2. Portal Features:
+1. Options page Features or stripe if they have a hosted service:
    - [ ] Subscription management
    - [ ] Payment method updates
    - [ ] Invoice history
-   - [ ] Usage statistics
    - [ ] Support access
 
 ## Testing Requirements
@@ -175,7 +166,7 @@
 4. ✅ Secure token management
 5. [ ] Complete password reset functionality
 6. [ ] Email verification implementation
-7. [ ] Customer portal integration
+7. [ ] Customer portal integration in options page or stripe hosted
 8. [ ] Comprehensive testing coverage
 9. [ ] Complete documentation
 

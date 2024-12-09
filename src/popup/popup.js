@@ -2,9 +2,46 @@ import authManager from "../auth/authManager";
 
 class PopupManager {
   constructor() {
+    // Start with loading state
+    document.body.classList.add("loading");
+
+    // Initialize in sequence
     this.initializeElements();
     this.setupEventListeners();
-    this.initializePopup();
+
+    // Hide both views initially
+    if (this.loggedOutView) this.loggedOutView.classList.add("hidden");
+    if (this.loggedInView) this.loggedInView.classList.add("hidden");
+
+    // Start initialization
+    this.initialize();
+  }
+
+  // Async initialization sequence
+  async initialize() {
+    try {
+      // Setup auth listener first
+      this.setupAuthStateListener();
+
+      // Wait for auth system to initialize
+      await authManager.initializeFromStorage();
+
+      // Get current session
+      const session = await authManager.getSession();
+      console.log("Initial session check:", session);
+
+      if (session?.user) {
+        await this.handleAuthenticatedState(session.user);
+      } else {
+        this.handleUnauthenticatedState();
+      }
+    } catch (error) {
+      console.error("Initialization error:", error);
+      this.handleUnauthenticatedState();
+    } finally {
+      // Remove loading state
+      document.body.classList.remove("loading");
+    }
   }
 
   initializeElements() {
@@ -31,6 +68,20 @@ class PopupManager {
     this.settingsBtn = document.getElementById("settings-btn");
   }
 
+  setupAuthStateListener() {
+    authManager.subscribeToAuthChanges(async ({ event, session }) => {
+      console.log("Auth state update in popup:", event, session);
+
+      if (event === "SIGNED_IN" || event === "RESTORED_SESSION") {
+        if (session?.user) {
+          await this.handleAuthenticatedState(session.user);
+        }
+      } else if (event === "SIGNED_OUT") {
+        this.handleUnauthenticatedState();
+      }
+    });
+  }
+
   setupEventListeners() {
     // Auth tab switching
     this.authTabs.forEach((tab) => {
@@ -53,24 +104,6 @@ class PopupManager {
     this.settingsBtn?.addEventListener("click", () => {
       chrome.runtime.openOptionsPage();
     });
-  }
-
-  async initializePopup() {
-    try {
-      this.showLoading();
-      const session = await authManager.getSession();
-
-      if (session) {
-        await this.handleAuthenticatedState(session.user);
-      } else {
-        this.handleUnauthenticatedState();
-      }
-    } catch (error) {
-      console.error("Error initializing popup:", error);
-      this.showError("Failed to initialize. Please try again.");
-    } finally {
-      this.hideLoading();
-    }
   }
 
   switchAuthTab(tab) {
@@ -98,20 +131,18 @@ class PopupManager {
     const errorDiv = this.loginForm.querySelector(".auth-error");
 
     try {
-      this.showLoading();
+      document.body.classList.add("loading");
       const { data, error } = await authManager.signInWithEmail(email, password);
 
       if (error) throw error;
 
-      if (data?.user) {
-        await this.handleAuthenticatedState(data.user);
-      }
+      // Auth state change will be handled by the listener
     } catch (error) {
       console.error("Login error:", error);
       errorDiv.textContent = error.message || "Failed to sign in. Please try again.";
       errorDiv.classList.remove("hidden");
     } finally {
-      this.hideLoading();
+      document.body.classList.remove("loading");
     }
   }
 
@@ -123,42 +154,48 @@ class PopupManager {
     const errorDiv = this.signupForm.querySelector(".auth-error");
 
     try {
-      this.showLoading();
+      document.body.classList.add("loading");
       const { data, error } = await authManager.signUpWithEmail(email, password);
 
       if (error) throw error;
 
-      if (data?.user) {
-        await this.handleAuthenticatedState(data.user);
-      }
+      // Auth state change will be handled by the listener
     } catch (error) {
       console.error("Signup error:", error);
       errorDiv.textContent = error.message || "Failed to create account. Please try again.";
       errorDiv.classList.remove("hidden");
     } finally {
-      this.hideLoading();
+      document.body.classList.remove("loading");
     }
   }
 
   async handleLogout() {
     try {
-      this.showLoading();
+      document.body.classList.add("loading");
       await authManager.signOut();
-      this.handleUnauthenticatedState();
+      // Auth state change will be handled by the listener
     } catch (error) {
       console.error("Logout error:", error);
       this.showError("Failed to sign out. Please try again.");
     } finally {
-      this.hideLoading();
+      document.body.classList.remove("loading");
     }
   }
 
   async handleAuthenticatedState(user) {
+    console.log("Handling authenticated state for user:", user.email);
+
+    // Ensure elements exist before updating
+    if (!this.loggedOutView || !this.loggedInView || !this.subscriptionSection) {
+      console.error("Required elements not found");
+      return;
+    }
+
     this.loggedOutView.classList.add("hidden");
     this.loggedInView.classList.remove("hidden");
     this.subscriptionSection.classList.remove("hidden");
 
-    if (user.email) {
+    if (user.email && this.userEmail) {
       this.userEmail.textContent = user.email;
     }
 
@@ -166,6 +203,14 @@ class PopupManager {
   }
 
   handleUnauthenticatedState() {
+    console.log("Handling unauthenticated state");
+
+    // Ensure elements exist before updating
+    if (!this.loggedOutView || !this.loggedInView || !this.subscriptionSection) {
+      console.error("Required elements not found");
+      return;
+    }
+
     this.loggedOutView.classList.remove("hidden");
     this.loggedInView.classList.add("hidden");
     this.subscriptionSection.classList.add("hidden");
@@ -181,12 +226,27 @@ class PopupManager {
   async updateSubscriptionStatus() {
     try {
       const response = await chrome.runtime.sendMessage({ type: "CHECK_SUBSCRIPTION" });
+
+      if (response.error) {
+        console.error("Subscription check error:", response.error);
+        // Default to basic instead of signing out
+        this.updateSubscriptionUI("basic");
+        return;
+      }
+
       const { subscriptionStatus } = response;
+      if (!subscriptionStatus || !["basic", "pro"].includes(subscriptionStatus)) {
+        console.error("Invalid subscription status:", subscriptionStatus);
+        // Default to basic instead of signing out
+        this.updateSubscriptionUI("basic");
+        return;
+      }
 
       this.updateSubscriptionUI(subscriptionStatus);
     } catch (error) {
       console.error("Error checking subscription:", error);
-      this.showError("Failed to load subscription status.");
+      // Default to basic instead of signing out
+      this.updateSubscriptionUI("basic");
     }
   }
 
@@ -203,45 +263,18 @@ class PopupManager {
   }
 
   getPlanDisplayName(status) {
-    switch (status) {
-      case "pro":
-        return "Pro";
-      case "basic":
-        return "Basic";
-      default:
-        return "Free";
-    }
+    return status === "pro" ? "Pro" : "Basic";
   }
 
   getPlanPrice(status) {
-    switch (status) {
-      case "pro":
-        return "$3.99/month";
-      case "basic":
-        return "$1.99/month";
-      default:
-        return "";
-    }
+    return status === "pro" ? "$3.99/month" : "$1.99/month";
   }
 
   getFeaturesList(status) {
-    let features = [];
-
-    switch (status) {
-      case "pro":
-        features = [
-          "Advanced ingredient scanning",
-          "Custom ingredients lists",
-          "Detailed health insights",
-          "Priority support",
-        ];
-        break;
-      case "basic":
-        features = ["Basic ingredient scanning", "Default ingredients database", "Basic allergen alerts"];
-        break;
-      default:
-        features = ["Basic features"];
-    }
+    const features =
+      status === "pro"
+        ? ["Advanced ingredient scanning", "Custom ingredients lists", "Detailed health insights", "Priority support"]
+        : ["Basic ingredient scanning", "Default ingredients database", "Basic allergen alerts"];
 
     return features.map((feature) => `<div>✓ ${feature}</div>`).join("");
   }
@@ -250,20 +283,14 @@ class PopupManager {
     const basicBtn = document.querySelector('[data-tier="basic"]');
     const proBtn = document.querySelector('[data-tier="pro"]');
 
-    switch (currentStatus) {
-      case "pro":
-        basicBtn.textContent = "Downgrade to Basic";
-        proBtn.textContent = "Current Plan";
-        proBtn.disabled = true;
-        break;
-      case "basic":
-        basicBtn.textContent = "Current Plan";
-        basicBtn.disabled = true;
-        proBtn.textContent = "Upgrade to Pro";
-        break;
-      default:
-        basicBtn.textContent = "Select Basic";
-        proBtn.textContent = "Select Pro";
+    if (currentStatus === "pro") {
+      basicBtn.textContent = "Downgrade to Basic";
+      proBtn.textContent = "Current Plan";
+      proBtn.disabled = true;
+    } else {
+      basicBtn.textContent = "Current Plan";
+      basicBtn.disabled = true;
+      proBtn.textContent = "Upgrade to Pro";
     }
   }
 
@@ -281,14 +308,6 @@ class PopupManager {
       console.error("Error handling tier selection:", error);
       this.showError("Failed to process subscription request.");
     }
-  }
-
-  showLoading() {
-    document.body.classList.add("loading");
-  }
-
-  hideLoading() {
-    document.body.classList.remove("loading");
   }
 
   showError(message) {
