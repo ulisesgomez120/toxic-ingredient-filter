@@ -22,6 +22,7 @@ class ProductScanner {
     this.lastUrl = window.location.href;
     this.isAuthenticated = false;
     this.subscriptionStatus = "none";
+    this.setupMessageListeners();
   }
 
   async init() {
@@ -479,13 +480,12 @@ class ProductScanner {
       });
 
       this.isAuthenticated = response.isAuthenticated;
+      this.subscriptionStatus = response.subscriptionStatus || "basic";
 
-      if (this.isAuthenticated) {
-        const subResponse = await chrome.runtime.sendMessage({
-          type: "CHECK_SUBSCRIPTION",
-        });
-        this.subscriptionStatus = subResponse.subscriptionStatus;
-      }
+      console.log("Auth status checked:", {
+        isAuthenticated: this.isAuthenticated,
+        subscriptionStatus: this.subscriptionStatus,
+      });
     } catch (error) {
       console.error("Error checking auth status:", error);
       this.isAuthenticated = false;
@@ -501,21 +501,27 @@ class ProductScanner {
     });
   }
 
-  async handleAuthStateChange(authState) {
+  handleAuthStateChange(message) {
+    console.log("Handling auth state change:", message);
+
     const wasAuthenticated = this.isAuthenticated;
-    this.isAuthenticated = authState.isAuthenticated;
-    this.subscriptionStatus = authState.subscriptionStatus;
+    this.isAuthenticated = message.isAuthenticated;
+    this.subscriptionStatus = message.subscriptionStatus || "basic";
 
     if (!wasAuthenticated && this.isAuthenticated) {
       // User just logged in - initialize everything
-      await this.init();
+      this.init();
     } else if (wasAuthenticated && !this.isAuthenticated) {
       // User logged out - clean up
       this.cleanup();
     }
-  }
 
+    // Re-verify feature access and update UI if needed
+    this.handlePageChanges();
+  }
   cleanup() {
+    console.log("Cleaning up scanner state");
+
     // Remove all overlays
     if (this.overlayManager) {
       document.querySelectorAll(".toxic-badge").forEach((badge) => badge.remove());
@@ -532,10 +538,17 @@ class ProductScanner {
     if (this.navigationTimeout) {
       clearTimeout(this.navigationTimeout);
     }
+
+    // Reset state
+    this.isAuthenticated = false;
+    this.subscriptionStatus = "none";
   }
 
   async verifyFeatureAccess(feature) {
     try {
+      // If not authenticated, no access
+      if (!this.isAuthenticated) return false;
+
       const response = await chrome.runtime.sendMessage({
         type: "VERIFY_ACCESS",
         feature,
@@ -545,6 +558,33 @@ class ProductScanner {
       console.error("Error verifying feature access:", error);
       return false;
     }
+  }
+
+  setupMessageListeners() {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      console.log("Content script received message:", message);
+
+      switch (message.type) {
+        case "AUTH_STATE_CHANGED":
+          this.handleAuthStateChange(message);
+          break;
+
+        case "SUBSCRIPTION_CHANGED":
+          this.handleSubscriptionChange(message.subscriptionStatus);
+          break;
+      }
+
+      return true; // Keep the message channel open
+    });
+  }
+
+  handleSubscriptionChange(newStatus) {
+    console.log("Handling subscription change:", newStatus);
+
+    this.subscriptionStatus = newStatus;
+
+    // Re-verify feature access and update UI
+    this.handlePageChanges();
   }
 }
 

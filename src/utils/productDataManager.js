@@ -5,11 +5,12 @@ export class ProductDataManager {
   constructor() {
     this.dbHandler = new DatabaseHandler();
     this.cacheManager = new ProductCacheManager();
-    this.pendingRequests = new Map(); // Track pending requests to avoid duplicates
-    this.batchSize = 10; // Number of products to process in one batch
-    this.batchDelay = 500; // Delay between batches in ms
-    this.currentBatch = new Set(); // Current batch of products to process
+    this.pendingRequests = new Map();
+    this.batchSize = 10;
+    this.batchDelay = 500;
+    this.currentBatch = new Set();
     this.batchTimeout = null;
+    this.subscriptionStatus = "basic"; // Add subscription status tracking
   }
 
   /**
@@ -17,6 +18,12 @@ export class ProductDataManager {
    * @param {Object} productData Basic product data from list
    * @param {Function} callback Callback to run when data is ready
    */
+  updateSubscriptionStatus(status) {
+    this.subscriptionStatus = status;
+    // Clear cache when subscription changes to ensure proper feature access
+    this.clearCache();
+  }
+
   async queueProduct(productData, callback) {
     const productId = productData.external_id;
 
@@ -44,6 +51,57 @@ export class ProductDataManager {
 
     // Schedule batch processing
     this.scheduleBatchProcessing();
+  }
+
+  async verifyAccess() {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "VERIFY_ACCESS",
+        feature: "basic_scan",
+      });
+      return response.hasAccess;
+    } catch (error) {
+      console.error("Error verifying access:", error);
+      return false;
+    }
+  }
+
+  async getIngredientsWithSubscription(productGroupId) {
+    try {
+      const ingredients = await this.dbHandler.getProductWithIngredients(productGroupId);
+
+      if (!ingredients) return null;
+
+      // For pro users, include additional processing
+      if (this.subscriptionStatus === "pro") {
+        // Add pro-only ingredient analysis
+        ingredients.detailedAnalysis = await this.getDetailedAnalysis(ingredients.ingredients);
+      }
+
+      return ingredients;
+    } catch (error) {
+      console.error("Error getting ingredients with subscription:", error);
+      return null;
+    }
+  }
+
+  async getDetailedAnalysis(ingredients) {
+    if (this.subscriptionStatus !== "pro") return null;
+
+    try {
+      // Add pro-only ingredient analysis logic here
+      // This could include more detailed toxicity information,
+      // alternative ingredients, health impact details, etc.
+      return {
+        // Example detailed analysis data
+        alternativeIngredients: [],
+        healthImpactDetails: [],
+        scientificReferences: [],
+      };
+    } catch (error) {
+      console.error("Error getting detailed analysis:", error);
+      return null;
+    }
   }
 
   /**
@@ -89,6 +147,13 @@ export class ProductDataManager {
       const results = await Promise.all(
         chunk.map(async ({ productId, productData }) => {
           try {
+            // Verify access before processing
+            const hasAccess = await this.verifyAccess();
+            if (!hasAccess) {
+              console.log("No access to process products - subscription required");
+              return null;
+            }
+
             // Format data for database
             const formattedData = this.formatProductData(productData);
 
@@ -102,8 +167,8 @@ export class ProductDataManager {
               // Save product group to cache
               await this.cacheManager.saveProductGroup(productGroup);
 
-              // Get ingredients
-              const ingredients = await this.dbHandler.getProductWithIngredients(productGroup.id);
+              // Get ingredients with subscription-based processing
+              const ingredients = await this.getIngredientsWithSubscription(productGroup.id);
 
               if (ingredients) {
                 // Save ingredients to cache
@@ -118,6 +183,7 @@ export class ProductDataManager {
                 const enrichedProduct = {
                   ...productData,
                   ...ingredients,
+                  subscriptionTier: this.subscriptionStatus, // Add subscription info to product data
                 };
 
                 // Save complete product data to cache
@@ -148,6 +214,7 @@ export class ProductDataManager {
       console.error("Error processing chunk:", error);
     }
   }
+
   formatProductData(productData) {
     return {
       brand: productData.brand || "",
@@ -181,7 +248,15 @@ export class ProductDataManager {
     const callbacks = this.pendingRequests.get(productId) || [];
     callbacks.forEach((callback) => {
       try {
-        callback(productData);
+        // Include subscription status in callback data
+        const dataWithSubscription = productData
+          ? {
+              ...productData,
+              subscriptionTier: this.subscriptionStatus,
+            }
+          : null;
+
+        callback(dataWithSubscription);
       } catch (error) {
         console.error("Error executing callback:", error);
       }

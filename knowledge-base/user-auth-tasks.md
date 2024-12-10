@@ -57,9 +57,32 @@
 - ✅ Enhanced error handling
 - ✅ Better state broadcasting
 
-## 3. Next Implementation Steps
+## 3. Known Issues
 
-### a. Account Management:
+### a. UI Update Issues:
+
+1. Sign In UI Bug:
+
+   - [ ] Popup UI doesn't update immediately after successful sign in
+   - [ ] Requires popup close/reopen to show authenticated state
+   - [ ] Need to investigate message passing between background and popup
+
+2. Sign Out UI Bug:
+   - [ ] Popup UI doesn't update properly on sign out
+   - [ ] UI flashes but remains in authenticated state
+   - [ ] Requires popup close/reopen to show correct state
+
+## 4. Next Implementation Steps
+
+### a. Bug Fixes:
+
+1. Auth State UI Updates:
+   - [ ] Fix immediate UI updates after sign in
+   - [ ] Fix UI updates after sign out
+   - [ ] Improve state synchronization between background and popup
+   - [ ] Add better error recovery for failed state updates
+
+### b. Account Management:
 
 1. Password Reset:
 
@@ -84,7 +107,7 @@
    - [ ] Add profile deletion option
    - [ ] Add data export option
 
-### b. Security Enhancements:
+### c. Security Enhancements:
 
 1. Session Management:
 
@@ -100,14 +123,6 @@
    - [ ] Add backup codes
    - [ ] Add 2FA recovery flow
    - [ ] Add 2FA bypass for trusted devices
-
-### b.2
-
-1. Options page Features or stripe if they have a hosted service:
-   - [ ] Subscription management
-   - [ ] Payment method updates
-   - [ ] Invoice history
-   - [ ] Support access
 
 ## Testing Requirements
 
@@ -166,34 +181,41 @@
 4. ✅ Secure token management
 5. [ ] Complete password reset functionality
 6. [ ] Email verification implementation
-7. [ ] Customer portal integration in options page or stripe hosted
+7. [ ] Customer portal integration
 8. [ ] Comprehensive testing coverage
 9. [ ] Complete documentation
+10. [ ] Fix UI update bugs for sign in/out
 
 ## Notes & Considerations
 
-1. Security Priorities:
+1. Current Issues:
+
+   - UI doesn't update immediately after auth state changes
+   - Need to improve state synchronization
+   - Consider alternative approaches to state management
+
+2. Security Priorities:
 
    - Implement password reset
    - Add email verification
    - Enhance session security
    - Add 2FA support
 
-2. UX Improvements:
+3. UX Improvements:
 
    - Better error messages
    - Loading state indicators
    - Success animations
    - Form validation feedback
 
-3. Integration Requirements:
+4. Integration Requirements:
 
    - Complete portal integration
    - Enhance Stripe integration
    - Improve state synchronization
    - Add offline support
 
-4. Performance Considerations:
+5. Performance Considerations:
    - Optimize token refresh
    - Minimize API calls
    - Improve state management

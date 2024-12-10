@@ -60,16 +60,40 @@
 - ✅ Added custom ingredients UI (Pro feature)
 - ✅ Added payment history display
 
-## 4. Next Implementation Steps
+## 4. Recent Implementation Progress
+
+### a. Subscription Status Function:
+
+- ✅ Created RPC function for subscription status
+- ✅ Added proper error handling
+- ✅ Implemented status caching
+- ✅ Added periodic status checks
+
+### b. Background Service Updates:
+
+- ✅ Added subscription check interval
+- ✅ Implemented cache management
+- ✅ Added feature access verification
+- ✅ Added subscription status notifications
+
+### c. Known Issues:
+
+1. UI Update Issues:
+   - [ ] Subscription status doesn't update immediately after changes
+   - [ ] UI requires popup close/reopen to show updated status
+   - [ ] Need to improve state synchronization
+   - [ ] Same issues as auth state updates (see user-auth-tasks.md)
+
+## 5. Next Implementation Steps
 
 ### a. Extension Subscription Integration:
 
 1. Background Service Updates:
 
-   - [ ] Add subscription check on extension startup
-   - [ ] Implement periodic subscription status checks
-   - [ ] Add subscription status caching
-   - [ ] Handle subscription expiration
+   - [ ] Fix UI update issues for subscription changes
+   - [ ] Improve state synchronization
+   - [ ] Add better error recovery
+   - [ ] Optimize subscription checks
 
 2. Content Script Updates:
 
@@ -80,6 +104,7 @@
 
 3. Popup Updates:
 
+   - [ ] Fix immediate UI updates after subscription changes
    - [ ] Add subscription status indicator
    - [ ] Implement subscription flow initiation
    - [ ] Add tier comparison view
@@ -152,12 +177,12 @@
 
 ## Success Criteria
 
-1. ✅ Users can authenticate directly in popup
-2. ✅ Users can view their subscription status
-3. ✅ Users can upgrade/downgrade subscriptions
-4. ✅ Feature access is properly controlled
-5. ✅ Settings page functions correctly
-6. [ ] Extension properly checks subscription status
+1. ✅ Users can view their subscription status
+2. ✅ Users can upgrade/downgrade subscriptions
+3. ✅ Feature access is properly controlled
+4. ✅ Settings page functions correctly
+5. ✅ Subscription check function works
+6. [ ] Fix UI update issues
 7. [ ] Features are correctly gated by subscription tier
 8. [ ] Subscription flow is smooth and user-friendly
 9. [ ] Error handling is robust and informative
@@ -165,18 +190,17 @@
 
 ## Notes & Considerations
 
-1. Recent Updates:
+1. Current Issues:
 
-   - ✅ Completed webhook handler implementation
-   - ✅ Set up Stripe integration
-   - ✅ Configured subscription tiers
-   - ✅ Implemented event tracking
+   - UI doesn't update immediately after subscription changes
+   - Need to improve state synchronization
+   - Consider alternative approaches to state management
 
 2. Next Focus:
 
-   - Implement subscription checks in extension
-   - Add feature gating
-   - Update UI for subscription flow
+   - Fix UI update issues
+   - Implement feature gating
+   - Complete subscription management UI
    - Add proper error handling
 
 3. Future Enhancements:
@@ -187,7 +211,7 @@
    - Consider offline support
 
 4. Performance Optimizations:
-   - Implement subscription status caching
-   - Optimize feature checks
+   - Optimize subscription status caching
    - Minimize API calls
+   - Improve state management
    - Add proper error recovery

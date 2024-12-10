@@ -20,18 +20,11 @@ class PopupManager {
   // Async initialization sequence
   async initialize() {
     try {
-      // Setup auth listener first
-      this.setupAuthStateListener();
+      // Get current auth status from background service
+      const response = await chrome.runtime.sendMessage({ type: "GET_AUTH_STATUS" });
 
-      // Wait for auth system to initialize
-      await authManager.initializeFromStorage();
-
-      // Get current session
-      const session = await authManager.getSession();
-      console.log("Initial session check:", session);
-
-      if (session?.user) {
-        await this.handleAuthenticatedState(session.user);
+      if (response.isAuthenticated && response.user) {
+        await this.handleAuthenticatedState(response.user, response.subscriptionStatus);
       } else {
         this.handleUnauthenticatedState();
       }
@@ -68,20 +61,6 @@ class PopupManager {
     this.settingsBtn = document.getElementById("settings-btn");
   }
 
-  setupAuthStateListener() {
-    authManager.subscribeToAuthChanges(async ({ event, session }) => {
-      console.log("Auth state update in popup:", event, session);
-
-      if (event === "SIGNED_IN" || event === "RESTORED_SESSION") {
-        if (session?.user) {
-          await this.handleAuthenticatedState(session.user);
-        }
-      } else if (event === "SIGNED_OUT") {
-        this.handleUnauthenticatedState();
-      }
-    });
-  }
-
   setupEventListeners() {
     // Auth tab switching
     this.authTabs.forEach((tab) => {
@@ -103,6 +82,29 @@ class PopupManager {
     // Settings button
     this.settingsBtn?.addEventListener("click", () => {
       chrome.runtime.openOptionsPage();
+    });
+
+    // Listen for state changes from background
+    chrome.runtime.onMessage.addListener((message) => {
+      console.log("Received message in popup:", message);
+
+      switch (message.type) {
+        case "AUTH_STATE_CHANGED":
+          if (message.isAuthenticated && message.user) {
+            this.handleAuthenticatedState(message.user, message.subscriptionStatus);
+          } else {
+            this.handleUnauthenticatedState();
+          }
+          break;
+
+        case "SUBSCRIPTION_CHANGED":
+          if (message.subscriptionStatus) {
+            this.updateSubscriptionUI(message.subscriptionStatus);
+          }
+          break;
+      }
+
+      return true; // Keep the message channel open
     });
   }
 
@@ -136,7 +138,7 @@ class PopupManager {
 
       if (error) throw error;
 
-      // Auth state change will be handled by the listener
+      // Auth state change will be handled by the message listener
     } catch (error) {
       console.error("Login error:", error);
       errorDiv.textContent = error.message || "Failed to sign in. Please try again.";
@@ -159,7 +161,7 @@ class PopupManager {
 
       if (error) throw error;
 
-      // Auth state change will be handled by the listener
+      // Auth state change will be handled by the message listener
     } catch (error) {
       console.error("Signup error:", error);
       errorDiv.textContent = error.message || "Failed to create account. Please try again.";
@@ -173,7 +175,7 @@ class PopupManager {
     try {
       document.body.classList.add("loading");
       await authManager.signOut();
-      // Auth state change will be handled by the listener
+      // Auth state change will be handled by the message listener
     } catch (error) {
       console.error("Logout error:", error);
       this.showError("Failed to sign out. Please try again.");
@@ -182,8 +184,8 @@ class PopupManager {
     }
   }
 
-  async handleAuthenticatedState(user) {
-    console.log("Handling authenticated state for user:", user.email);
+  async handleAuthenticatedState(user, subscriptionStatus = "basic") {
+    console.log("Handling authenticated state for user:", user.email, "with subscription:", subscriptionStatus);
 
     // Ensure elements exist before updating
     if (!this.loggedOutView || !this.loggedInView || !this.subscriptionSection) {
@@ -199,7 +201,8 @@ class PopupManager {
       this.userEmail.textContent = user.email;
     }
 
-    await this.updateSubscriptionStatus();
+    // Update subscription UI with provided status
+    this.updateSubscriptionUI(subscriptionStatus);
   }
 
   handleUnauthenticatedState() {
@@ -223,34 +226,9 @@ class PopupManager {
     this.switchAuthTab("login");
   }
 
-  async updateSubscriptionStatus() {
-    try {
-      const response = await chrome.runtime.sendMessage({ type: "CHECK_SUBSCRIPTION" });
-
-      if (response.error) {
-        console.error("Subscription check error:", response.error);
-        // Default to basic instead of signing out
-        this.updateSubscriptionUI("basic");
-        return;
-      }
-
-      const { subscriptionStatus } = response;
-      if (!subscriptionStatus || !["basic", "pro"].includes(subscriptionStatus)) {
-        console.error("Invalid subscription status:", subscriptionStatus);
-        // Default to basic instead of signing out
-        this.updateSubscriptionUI("basic");
-        return;
-      }
-
-      this.updateSubscriptionUI(subscriptionStatus);
-    } catch (error) {
-      console.error("Error checking subscription:", error);
-      // Default to basic instead of signing out
-      this.updateSubscriptionUI("basic");
-    }
-  }
-
   updateSubscriptionUI(status) {
+    console.log("Updating subscription UI with status:", status);
+
     // Update plan badge
     this.planName.textContent = this.getPlanDisplayName(status);
     this.planPrice.textContent = this.getPlanPrice(status);

@@ -84,7 +84,8 @@ class DatabaseHandler {
   constructor() {
     this.supabaseUrl = process.env.SUPABASE_URL;
     this.supabaseKey = process.env.SUPABASE_KEY;
-    this.overlayManager = new OverlayManager(); // Create an instance of OverlayManager
+    this.overlayManager = new OverlayManager();
+    this.subscriptionStatus = "basic"; // Add subscription status tracking
 
     if (!this.supabaseUrl || !this.supabaseKey) {
       console.error("Database configuration missing. Using environment variables:", {
@@ -92,6 +93,12 @@ class DatabaseHandler {
         key: this.supabaseKey ? "set" : "missing",
       });
     }
+  }
+
+  updateSubscriptionStatus(status) {
+    this.subscriptionStatus = status;
+    // Update overlay manager subscription status
+    this.overlayManager.updateSubscriptionStatus(status);
   }
 
   async findProductGroupByExternalId(externalId) {
@@ -463,6 +470,7 @@ class DatabaseHandler {
   }
 
   async saveIngredients(productGroupId, ingredients, toxinFlags = []) {
+    // co
     try {
       // First, mark existing ingredients as not current
       const updateResponse = await fetch(
@@ -484,11 +492,18 @@ class DatabaseHandler {
         verification_count: 1,
         found_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
+        subscription_tier: this.subscriptionStatus, // Add subscription tier
       };
 
       // Add toxin flags if provided
       if (toxinFlags) {
         insertData.toxin_flags = toxinFlags;
+      }
+
+      // Add pro-only data if applicable
+      if (this.subscriptionStatus === "pro") {
+        insertData.detailed_analysis = await this.getDetailedAnalysis(ingredients);
+        insertData.custom_flags = await this.getCustomFlags(ingredients);
       }
 
       // Then insert new ingredients
@@ -519,6 +534,36 @@ class DatabaseHandler {
     } catch (error) {
       console.error("Error in getProductWithIngredients:", error);
       throw error;
+    }
+  }
+
+  async getDetailedAnalysis(ingredients) {
+    if (this.subscriptionStatus !== "pro") return null;
+
+    try {
+      // Add pro-only ingredient analysis logic here
+      return {
+        scientificReferences: [],
+        healthImpactDetails: [],
+        alternativeIngredients: [],
+        lastAnalyzed: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("Error getting detailed analysis:", error);
+      return null;
+    }
+  }
+
+  // Add method for pro-only custom flags
+  async getCustomFlags(ingredients) {
+    if (this.subscriptionStatus !== "pro") return null;
+
+    try {
+      // Get custom ingredient flags from overlay manager
+      return this.overlayManager.getCustomIngredientFlags(ingredients);
+    } catch (error) {
+      console.error("Error getting custom flags:", error);
+      return null;
     }
   }
 

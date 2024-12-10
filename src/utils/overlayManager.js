@@ -8,6 +8,8 @@ export class OverlayManager {
       DEFAULT_TOXIC_INGREDIENTS.map((ingredient) => [ingredient.name.toLowerCase(), ingredient])
     );
     this.creatingOverlay = false;
+    this.customIngredients = new Map();
+    this.subscriptionStatus = "basic"; // Default to basic
   }
 
   // Get severity color based on highest concern level
@@ -35,11 +37,17 @@ export class OverlayManager {
 
   // Update toxic ingredients with custom ones from settings
   updateCustomIngredients(customIngredients) {
-    customIngredients.forEach((ingredient) => {
-      if (typeof ingredient === "object" && ingredient.name) {
-        this.toxicIngredients.set(ingredient.name.toLowerCase(), ingredient);
-      }
-    });
+    // Clear existing custom ingredients
+    this.customIngredients.clear();
+
+    // Only store custom ingredients if pro subscription
+    if (this.subscriptionStatus === "pro") {
+      customIngredients.forEach((ingredient) => {
+        if (typeof ingredient === "object" && ingredient.name) {
+          this.customIngredients.set(ingredient.name.toLowerCase(), ingredient);
+        }
+      });
+    }
   }
 
   findToxicIngredients(ingredients) {
@@ -51,9 +59,11 @@ export class OverlayManager {
       .split(",")
       .map((i) => i.trim())
       .filter((i) => i);
+
     // Find matching toxic ingredients
     const found = [];
     for (const ingredient of ingredientList) {
+      // Check default ingredients
       for (const [toxicName, toxicData] of this.toxicIngredients) {
         if (
           ingredient.includes(toxicName.toLowerCase()) ||
@@ -61,6 +71,16 @@ export class OverlayManager {
         ) {
           found.push(toxicData);
           break;
+        }
+      }
+
+      // Check custom ingredients for pro users
+      if (this.subscriptionStatus === "pro") {
+        for (const [customName, customData] of this.customIngredients) {
+          if (ingredient.includes(customName.toLowerCase())) {
+            found.push(customData);
+            break;
+          }
         }
       }
     }
@@ -122,6 +142,10 @@ export class OverlayManager {
         header.textContent = `Found ${toxinFlags.length} concerning ingredient${toxinFlags.length > 1 ? "s" : ""}:`;
         tooltip.appendChild(header);
 
+        // Group ingredients by source (default vs custom)
+        const defaultIngredients = [];
+        const customIngredients = [];
+
         toxinFlags.forEach((ingredient) => {
           const ingredientDiv = document.createElement("div");
           ingredientDiv.className = "toxic-ingredient";
@@ -135,8 +159,25 @@ export class OverlayManager {
 
           ingredientDiv.appendChild(nameSpan);
           ingredientDiv.appendChild(concernSpan);
-          tooltip.appendChild(ingredientDiv);
+
+          if (this.customIngredients.has(ingredient.name.toLowerCase())) {
+            customIngredients.push(ingredientDiv);
+          } else {
+            defaultIngredients.push(ingredientDiv);
+          }
         });
+
+        // Add default ingredients
+        defaultIngredients.forEach((div) => tooltip.appendChild(div));
+
+        // Add custom ingredients with header if any exist
+        if (customIngredients.length > 0) {
+          const customHeader = document.createElement("div");
+          customHeader.className = "toxic-tooltip-subheader";
+          customHeader.textContent = "Custom Ingredients:";
+          tooltip.appendChild(customHeader);
+          customIngredients.forEach((div) => tooltip.appendChild(div));
+        }
       } else if (toxinFlags.length === 0) {
         const noToxinsDiv = document.createElement("div");
         noToxinsDiv.className = "toxic-tooltip-safe";
@@ -156,6 +197,14 @@ export class OverlayManager {
       return false;
     } finally {
       this.creatingOverlay = false;
+    }
+  }
+
+  updateSubscriptionStatus(status) {
+    this.subscriptionStatus = status;
+    // Re-process custom ingredients based on new status
+    if (status !== "pro") {
+      this.customIngredients.clear();
     }
   }
 }

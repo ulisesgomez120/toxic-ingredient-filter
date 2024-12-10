@@ -3,10 +3,12 @@
 class ProductCacheManager {
   constructor() {
     this.DB_NAME = "ToxicFoodFilter";
-    this.DB_VERSION = 1;
+    this.DB_VERSION = 2; // Increment version for new subscription fields
     this.CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
     this.db = null;
     this.memoryCache = new Map();
+    this.currentSubscription = "basic";
+    this.subscriptionVersion = 1; // Track subscription data version
 
     // Initialize database
     this.initDB();
@@ -29,24 +31,41 @@ class ProductCacheManager {
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
+        const oldVersion = event.oldVersion;
 
-        // Create product store
+        // Create or update product store
         if (!db.objectStoreNames.contains("products")) {
           const productStore = db.createObjectStore("products", { keyPath: "external_id" });
           productStore.createIndex("retailerId", "retailerId", { unique: false });
           productStore.createIndex("lastUpdated", "lastUpdated", { unique: false });
+          productStore.createIndex("subscriptionTier", "subscriptionTier", { unique: false });
+          productStore.createIndex("subscriptionVersion", "subscriptionVersion", { unique: false });
+        } else if (oldVersion < 2) {
+          const tx = event.target.transaction;
+          const store = tx.objectStore("products");
+          if (!store.indexNames.contains("subscriptionTier")) {
+            store.createIndex("subscriptionTier", "subscriptionTier", { unique: false });
+          }
+          if (!store.indexNames.contains("subscriptionVersion")) {
+            store.createIndex("subscriptionVersion", "subscriptionVersion", { unique: false });
+          }
         }
 
-        // Create product groups store
-        if (!db.objectStoreNames.contains("productGroups")) {
-          const groupStore = db.createObjectStore("productGroups", { keyPath: "id" });
-          groupStore.createIndex("normalizedBaseName", "normalizedBaseName", { unique: true });
-        }
-
-        // Create ingredients store
+        // Update ingredients store
         if (!db.objectStoreNames.contains("ingredients")) {
           const ingredientStore = db.createObjectStore("ingredients", { keyPath: "productGroupId" });
           ingredientStore.createIndex("lastUpdated", "lastUpdated", { unique: false });
+          ingredientStore.createIndex("subscriptionTier", "subscriptionTier", { unique: false });
+          ingredientStore.createIndex("subscriptionVersion", "subscriptionVersion", { unique: false });
+        } else if (oldVersion < 2) {
+          const tx = event.target.transaction;
+          const store = tx.objectStore("ingredients");
+          if (!store.indexNames.contains("subscriptionTier")) {
+            store.createIndex("subscriptionTier", "subscriptionTier", { unique: false });
+          }
+          if (!store.indexNames.contains("subscriptionVersion")) {
+            store.createIndex("subscriptionVersion", "subscriptionVersion", { unique: false });
+          }
         }
       };
     });
@@ -56,7 +75,7 @@ class ProductCacheManager {
     // Check memory cache first
     if (this.memoryCache.has(externalId)) {
       const cachedProduct = this.memoryCache.get(externalId);
-      if (this.isCacheValid(cachedProduct.lastUpdated)) {
+      if (this.isCacheValid(cachedProduct.lastUpdated, cachedProduct.subscriptionVersion)) {
         return cachedProduct;
       }
       this.memoryCache.delete(externalId);
@@ -68,7 +87,7 @@ class ProductCacheManager {
       const store = tx.objectStore("products");
       const product = await this.dbRequest(store.get(externalId));
 
-      if (product && this.isCacheValid(product.lastUpdated)) {
+      if (product && this.isCacheValid(product.lastUpdated, product.subscriptionVersion)) {
         this.memoryCache.set(externalId, product);
         return product;
       }
@@ -83,6 +102,8 @@ class ProductCacheManager {
     const data = {
       ...productData,
       lastUpdated: Date.now(),
+      subscriptionTier: this.currentSubscription,
+      subscriptionVersion: this.subscriptionVersion,
     };
 
     try {
@@ -143,14 +164,54 @@ class ProductCacheManager {
         store.put({
           productGroupId,
           ingredients,
-          toxinFlags, // Add toxinFlags to the stored data
+          toxinFlags,
           lastUpdated: Date.now(),
+          subscriptionTier: this.currentSubscription,
+          subscriptionVersion: this.subscriptionVersion,
         })
       );
       return true;
     } catch (error) {
       console.error("Error saving ingredients:", error);
       return false;
+    }
+  }
+
+  async updateSubscriptionStatus(newStatus) {
+    if (this.currentSubscription !== newStatus) {
+      this.currentSubscription = newStatus;
+      this.subscriptionVersion++; // Increment version to invalidate old cache
+      await this.cleanupSubscriptionCache();
+    }
+  }
+
+  async cleanupSubscriptionCache() {
+    // Clean memory cache
+    for (const [key, value] of this.memoryCache.entries()) {
+      if (value.subscriptionVersion !== this.subscriptionVersion) {
+        this.memoryCache.delete(key);
+      }
+    }
+
+    // Clean IndexedDB
+    try {
+      await this.cleanSubscriptionStore("products");
+      await this.cleanSubscriptionStore("ingredients");
+    } catch (error) {
+      console.error("Error cleaning subscription cache:", error);
+    }
+  }
+
+  async cleanSubscriptionStore(storeName) {
+    const tx = this.db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    const index = store.index("subscriptionVersion");
+    const range = IDBKeyRange.upperBound(this.subscriptionVersion - 1);
+
+    let cursor = await this.dbRequest(index.openCursor(range));
+    while (cursor) {
+      await this.dbRequest(store.delete(cursor.primaryKey));
+      cursor = await this.dbRequest(cursor.continue());
     }
   }
 
@@ -188,8 +249,8 @@ class ProductCacheManager {
     }
   }
 
-  isCacheValid(timestamp) {
-    return Date.now() - timestamp < this.CACHE_DURATION;
+  isCacheValid(timestamp, subscriptionVersion) {
+    return Date.now() - timestamp < this.CACHE_DURATION && subscriptionVersion === this.subscriptionVersion;
   }
 
   dbRequest(request) {

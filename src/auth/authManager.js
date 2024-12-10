@@ -22,13 +22,28 @@ class AuthManager {
     if (event === "SIGNED_IN") {
       this.currentUser = session.user;
       await this.persistSession(session);
+
+      // Get initial subscription status
+      let subscriptionStatus = "basic";
+      try {
+        const { data, error } = await supabase.rpc("get_user_subscription_status", {
+          p_user_id: session.user.id,
+        });
+        if (!error && data && data.length > 0) {
+          subscriptionStatus = data[0].subscription_tier;
+        }
+      } catch (error) {
+        console.error("Error getting subscription status:", error);
+      }
+
+      // Include subscription status in notification
+      this.notifySubscribers({ event, session, subscriptionStatus });
     } else if (event === "SIGNED_OUT") {
       this.currentUser = null;
       await this.clearSession();
+      // Include basic subscription status in notification
+      this.notifySubscribers({ event, session: null, subscriptionStatus: "none" });
     }
-
-    // Notify subscribers
-    this.notifySubscribers({ event, session });
   }
 
   // Subscribe to auth state changes
@@ -36,7 +51,27 @@ class AuthManager {
     this.authStateSubscribers.add(callback);
     // Immediately call with current state if initialized
     if (this.initialized && this.currentUser) {
-      callback({ event: "RESTORED_SESSION", session: { user: this.currentUser } });
+      // Get current subscription status
+      supabase
+        .rpc("get_user_subscription_status", {
+          p_user_id: this.currentUser.id,
+        })
+        .then(({ data, error }) => {
+          const subscriptionStatus = !error && data && data.length > 0 ? data[0].subscription_tier : "basic";
+          callback({
+            event: "RESTORED_SESSION",
+            session: { user: this.currentUser },
+            subscriptionStatus,
+          });
+        })
+        .catch((error) => {
+          console.error("Error getting subscription status:", error);
+          callback({
+            event: "RESTORED_SESSION",
+            session: { user: this.currentUser },
+            subscriptionStatus: "basic",
+          });
+        });
     }
   }
 
@@ -158,7 +193,6 @@ class AuthManager {
   async initializeFromStorage() {
     try {
       console.log("Initializing from storage...");
-
       // Get stored session
       const { "auth.session": storedSession } = await chrome.storage.local.get("auth.session");
 
@@ -177,20 +211,37 @@ class AuthManager {
           console.error("Error setting session:", error);
           await this.clearSession();
           this.currentUser = null;
+          this.notifySubscribers({ event: "RESTORED_SESSION", session: null, subscriptionStatus: "none" });
         } else if (session) {
           console.log("Session restored successfully");
           this.currentUser = session.user;
-          // Notify subscribers of restored session
-          this.notifySubscribers({ event: "RESTORED_SESSION", session });
+
+          // Get subscription status
+          let subscriptionStatus = "basic";
+          try {
+            const { data, error } = await supabase.rpc("get_user_subscription_status", {
+              p_user_id: session.user.id,
+            });
+            if (!error && data && data.length > 0) {
+              subscriptionStatus = data[0].subscription_tier;
+            }
+          } catch (error) {
+            console.error("Error getting subscription status:", error);
+          }
+
+          // Notify subscribers of restored session with subscription status
+          this.notifySubscribers({ event: "RESTORED_SESSION", session, subscriptionStatus });
         }
       } else {
         console.log("No stored session found");
+        this.notifySubscribers({ event: "RESTORED_SESSION", session: null, subscriptionStatus: "none" });
       }
 
       this.initialized = true;
     } catch (error) {
       console.error("Error initializing from storage:", error);
       this.initialized = true; // Still mark as initialized to prevent loops
+      this.notifySubscribers({ event: "RESTORED_SESSION", session: null, subscriptionStatus: "none" });
     }
   }
 }
