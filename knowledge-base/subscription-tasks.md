@@ -80,12 +80,9 @@
 
 3. Popup Updates:
 
-   - [ ] Add subscription status indicator
    - [ ] Implement subscription flow initiation
-   - [ ] Add tier comparison view
-   - [ ] Show feature availability based on tier
 
-4. Options Page Updates:
+4. Options Page Updates: (hold off on this, Stripe might have a portal for this.)
    - [ ] Add subscription management section
    - [ ] Show current plan details
    - [ ] Add upgrade/downgrade options
@@ -95,22 +92,11 @@
 
 1. Basic Tier Features:
 
-   - [ ] Implement basic ingredient scanning limits
-   - [ ] Enable default ingredients database access
-   - [ ] Add basic allergen alerts
-   - [ ] Set up usage tracking
+   - [ ] use only basic feature for now.
 
-2. Pro Tier Features:
-
-   - [ ] Enable custom ingredients lists
-   - [ ] Add detailed health insights
-   - [ ] Implement advanced scanning features
-   - [ ] Set up priority support flag
-
-3. Access Management:
+2. Access Management:
    - [ ] Add subscription status checks
    - [ ] Implement feature gates
-   - [ ] Add upgrade prompts
    - [ ] Handle grace periods
 
 ### c. Testing & Validation:
