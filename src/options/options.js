@@ -16,19 +16,6 @@ class OptionsManager {
     this.featuresList = document.getElementById("features-list");
     this.upgradeBtn = document.getElementById("upgrade-btn");
     this.manageSubscriptionBtn = document.getElementById("manage-subscription-btn");
-    this.paymentHistory = document.getElementById("payment-history");
-
-    // Custom ingredients elements
-    this.customIngredientsLocked = document.getElementById("custom-ingredients-locked");
-    this.customIngredientsContent = document.getElementById("custom-ingredients-content");
-    this.ingredientsContainer = document.getElementById("ingredients-container");
-    this.addIngredientBtn = document.getElementById("add-ingredient-btn");
-    this.unlockCustomIngredientsBtn = document.getElementById("unlock-custom-ingredients");
-
-    // Modal elements
-    this.addIngredientModal = document.getElementById("add-ingredient-modal");
-    this.addIngredientForm = document.getElementById("add-ingredient-form");
-    this.cancelAddIngredientBtn = document.getElementById("cancel-add-ingredient");
 
     // Settings elements
     this.strictnessLevel = document.getElementById("strictness-level");
@@ -42,12 +29,6 @@ class OptionsManager {
     // Subscription events
     this.upgradeBtn?.addEventListener("click", () => this.handleUpgrade());
     this.manageSubscriptionBtn?.addEventListener("click", () => this.handleManageSubscription());
-
-    // Custom ingredients events
-    this.addIngredientBtn?.addEventListener("click", () => this.showAddIngredientModal());
-    this.unlockCustomIngredientsBtn?.addEventListener("click", () => this.handleUpgrade());
-    this.cancelAddIngredientBtn?.addEventListener("click", () => this.hideAddIngredientModal());
-    this.addIngredientForm?.addEventListener("submit", (e) => this.handleAddIngredient(e));
 
     // Settings events
     this.strictnessLevel?.addEventListener("change", () => this.saveSettings());
@@ -64,7 +45,7 @@ class OptionsManager {
   async loadOptions() {
     try {
       this.showLoading();
-      await Promise.all([this.loadAuthState(), this.loadSettings(), this.loadCustomIngredients()]);
+      await Promise.all([this.loadAuthState(), this.loadSettings()]);
     } catch (error) {
       console.error("Error loading options:", error);
       this.showError("Failed to load options. Please try again.");
@@ -126,7 +107,6 @@ class OptionsManager {
       const { subscriptionStatus } = response;
 
       this.updateSubscriptionUI(subscriptionStatus);
-      this.updateCustomIngredientsAccess(subscriptionStatus === "pro");
     } catch (error) {
       console.error("Error loading subscription:", error);
       this.showError("Failed to load subscription status.");
@@ -146,55 +126,25 @@ class OptionsManager {
   }
 
   getPlanDisplayName(status) {
-    switch (status) {
-      case "pro":
-        return "Pro Plan";
-      case "basic":
-        return "Basic Plan";
-      default:
-        return "Free Plan";
-    }
+    return status === "basic" ? "Basic Plan" : "Free Plan";
   }
 
   getFeaturesList(status) {
-    let features = [];
-
-    switch (status) {
-      case "pro":
-        features = [
-          "Advanced ingredient scanning",
-          "Custom ingredients lists",
-          "Detailed health insights",
-          "Priority support",
-        ];
-        break;
-      case "basic":
-        features = ["Basic ingredient scanning", "Default ingredients database", "Basic allergen alerts"];
-        break;
-      default:
-        features = ["Basic features"];
-    }
+    const features =
+      status === "basic"
+        ? ["Ingredient scanning", "Default ingredients database", "Basic allergen alerts", "Real-time analysis"]
+        : ["Limited features"];
 
     return features.map((feature) => `<li>✓ ${feature}</li>`).join("");
   }
 
   updateSubscriptionButtons(status) {
-    if (status === "pro") {
+    if (status === "basic") {
       this.upgradeBtn.style.display = "none";
       this.manageSubscriptionBtn.style.display = "block";
     } else {
       this.upgradeBtn.style.display = "block";
       this.manageSubscriptionBtn.style.display = "none";
-    }
-  }
-
-  updateCustomIngredientsAccess(hasPro) {
-    if (hasPro) {
-      this.customIngredientsLocked.classList.add("hidden");
-      this.customIngredientsContent.classList.remove("hidden");
-    } else {
-      this.customIngredientsLocked.classList.remove("hidden");
-      this.customIngredientsContent.classList.add("hidden");
     }
   }
 
@@ -231,83 +181,6 @@ class OptionsManager {
     }
   }
 
-  async loadCustomIngredients() {
-    try {
-      const response = await this.sendMessage({ type: "GET_CUSTOM_INGREDIENTS" });
-      if (this.ingredientsContainer) {
-        this.renderCustomIngredients(response.ingredients || []);
-      }
-    } catch (error) {
-      console.error("Error loading custom ingredients:", error);
-      this.showError("Failed to load custom ingredients");
-    }
-  }
-
-  renderCustomIngredients(ingredients) {
-    if (!this.ingredientsContainer) return;
-
-    this.ingredientsContainer.innerHTML = ingredients
-      .map(
-        (ingredient) => `
-      <div class="ingredient-item">
-        <div class="ingredient-info">
-          <strong>${ingredient.name}</strong>
-          <span class="ingredient-category">${ingredient.category}</span>
-          <span class="concern-level ${ingredient.concernLevel.toLowerCase()}">${ingredient.concernLevel}</span>
-        </div>
-        <button class="delete-ingredient" data-id="${ingredient.id}">Delete</button>
-      </div>
-    `
-      )
-      .join("");
-
-    // Add delete event listeners
-    this.ingredientsContainer.querySelectorAll(".delete-ingredient").forEach((button) => {
-      button.addEventListener("click", () => this.handleDeleteIngredient(button.dataset.id));
-    });
-  }
-
-  async handleAddIngredient(event) {
-    event.preventDefault();
-
-    const formData = new FormData(event.target);
-    const ingredient = {
-      name: formData.get("ingredient-name"),
-      category: formData.get("ingredient-category"),
-      concernLevel: formData.get("ingredient-concern"),
-      notes: formData.get("ingredient-notes"),
-    };
-
-    try {
-      await this.sendMessage({
-        type: "ADD_CUSTOM_INGREDIENT",
-        ingredient,
-      });
-
-      this.hideAddIngredientModal();
-      this.loadCustomIngredients();
-      this.showSuccess("Ingredient added successfully");
-    } catch (error) {
-      console.error("Error adding ingredient:", error);
-      this.showError("Failed to add ingredient");
-    }
-  }
-
-  async handleDeleteIngredient(id) {
-    try {
-      await this.sendMessage({
-        type: "DELETE_CUSTOM_INGREDIENT",
-        id,
-      });
-
-      this.loadCustomIngredients();
-      this.showSuccess("Ingredient deleted successfully");
-    } catch (error) {
-      console.error("Error deleting ingredient:", error);
-      this.showError("Failed to delete ingredient");
-    }
-  }
-
   async handleUpgrade() {
     try {
       const response = await this.sendMessage({ type: "GET_PAYMENT_LINK" });
@@ -339,19 +212,6 @@ class OptionsManager {
     } catch (error) {
       console.error("Error logging out:", error);
       this.showError("Failed to logout");
-    }
-  }
-
-  showAddIngredientModal() {
-    if (this.addIngredientModal) {
-      this.addIngredientModal.classList.remove("hidden");
-      this.addIngredientForm?.reset();
-    }
-  }
-
-  hideAddIngredientModal() {
-    if (this.addIngredientModal) {
-      this.addIngredientModal.classList.add("hidden");
     }
   }
 

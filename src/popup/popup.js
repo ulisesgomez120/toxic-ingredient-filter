@@ -95,10 +95,8 @@ class PopupManager {
     // Logout
     document.getElementById("logout-btn")?.addEventListener("click", () => this.handleLogout());
 
-    // Subscription buttons
-    document.querySelectorAll(".tier-btn").forEach((button) => {
-      button.addEventListener("click", (e) => this.handleTierSelection(e.target.dataset.tier));
-    });
+    // Subscription button
+    document.querySelector(".tier-btn")?.addEventListener("click", () => this.handleTierSelection("basic"));
 
     // Settings button
     this.settingsBtn?.addEventListener("click", () => {
@@ -229,83 +227,58 @@ class PopupManager {
 
       if (response.error) {
         console.error("Subscription check error:", response.error);
-        // Default to basic instead of signing out
-        this.updateSubscriptionUI("basic");
+        this.updateSubscriptionUI("none");
         return;
       }
 
       const { subscriptionStatus } = response;
-      if (!subscriptionStatus || !["basic", "pro"].includes(subscriptionStatus)) {
-        console.error("Invalid subscription status:", subscriptionStatus);
-        // Default to basic instead of signing out
-        this.updateSubscriptionUI("basic");
-        return;
-      }
-
       this.updateSubscriptionUI(subscriptionStatus);
     } catch (error) {
       console.error("Error checking subscription:", error);
-      // Default to basic instead of signing out
-      this.updateSubscriptionUI("basic");
+      this.updateSubscriptionUI("none");
     }
   }
 
   updateSubscriptionUI(status) {
     // Update plan badge
-    this.planName.textContent = this.getPlanDisplayName(status);
-    this.planPrice.textContent = this.getPlanPrice(status);
+    this.planName.textContent = status === "basic" ? "Basic Plan" : "Free Plan";
+    this.planPrice.textContent = status === "basic" ? "$1.99/month" : "Free";
 
     // Update features list
     this.subscriptionFeatures.innerHTML = this.getFeaturesList(status);
 
-    // Update tier buttons
-    this.updateTierButtons(status);
-  }
-
-  getPlanDisplayName(status) {
-    return status === "pro" ? "Pro" : "Basic";
-  }
-
-  getPlanPrice(status) {
-    return status === "pro" ? "$3.99/month" : "$1.99/month";
+    // Update subscription button
+    const subscribeBtn = document.querySelector(".tier-btn");
+    if (status === "basic") {
+      subscribeBtn.textContent = "Current Plan";
+      subscribeBtn.disabled = true;
+    } else {
+      subscribeBtn.textContent = "Get Started";
+      subscribeBtn.disabled = false;
+    }
   }
 
   getFeaturesList(status) {
     const features =
-      status === "pro"
-        ? ["Advanced ingredient scanning", "Custom ingredients lists", "Detailed health insights", "Priority support"]
-        : ["Basic ingredient scanning", "Default ingredients database", "Basic allergen alerts"];
+      status === "basic"
+        ? ["Ingredient scanning", "Default ingredients database", "Basic allergen alerts", "Real-time analysis"]
+        : ["Limited features"];
 
     return features.map((feature) => `<div>✓ ${feature}</div>`).join("");
   }
 
-  updateTierButtons(currentStatus) {
-    const basicBtn = document.querySelector('[data-tier="basic"]');
-    const proBtn = document.querySelector('[data-tier="pro"]');
-
-    if (currentStatus === "pro") {
-      basicBtn.textContent = "Downgrade to Basic";
-      proBtn.textContent = "Current Plan";
-      proBtn.disabled = true;
-    } else {
-      basicBtn.textContent = "Current Plan";
-      basicBtn.disabled = true;
-      proBtn.textContent = "Upgrade to Pro";
-    }
-  }
-
-  async handleTierSelection(tier) {
+  async handleTierSelection() {
     try {
       const response = await chrome.runtime.sendMessage({
         type: "GET_PAYMENT_LINK",
-        tier,
+        tier: "basic",
       });
 
       if (response.url) {
         chrome.tabs.create({ url: response.url });
       }
     } catch (error) {
-      console.error("Error handling tier selection:", error);
+      console.error("Error handling subscription:", error);
       this.showError("Failed to process subscription request.");
     }
   }

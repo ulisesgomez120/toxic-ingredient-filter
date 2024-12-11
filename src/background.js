@@ -1,4 +1,5 @@
 import authManager from "./auth/authManager";
+import { supabase } from "./utils/supabaseClient";
 
 class BackgroundService {
   constructor() {
@@ -96,16 +97,33 @@ class BackgroundService {
       const session = await authManager.getSession();
       if (!session) {
         console.log("No session found in checkSubscriptionStatus");
-        return "basic"; // Default to basic if no session
+        return "none"; // No subscription if not authenticated
       }
 
-      // TODO: Implement actual subscription check with Supabase
-      // For now, always return basic for testing
-      console.log("Returning basic subscription for user:", session.user.email);
-      return "basic";
+      // Call the get_subscription_tier RPC function
+      const { data: subscriptionData, error } = await supabase.rpc("get_subscription_tier", {
+        user_id: session.user.id,
+      });
+
+      if (error) {
+        console.error("Error checking subscription:", error);
+        return "none";
+      }
+
+      if (!subscriptionData) {
+        console.log("No subscription found for user:", session.user.email);
+        return "none";
+      }
+
+      // For MVP, we only care if they have an active basic subscription
+      if (subscriptionData.status === "active" && subscriptionData.tier_name.toLowerCase() === "basic") {
+        return "basic";
+      }
+
+      return "none";
     } catch (error) {
       console.error("Error in checkSubscriptionStatus:", error);
-      return "basic"; // Default to basic on error
+      return "none"; // Default to no subscription on error
     }
   }
 
@@ -116,13 +134,10 @@ class BackgroundService {
 
       const subscriptionStatus = await this.checkSubscriptionStatus();
 
+      // For MVP, only check basic_scan feature
       switch (feature) {
         case "basic_scan":
-          return subscriptionStatus === "basic" || subscriptionStatus === "pro";
-
-        case "custom_ingredients":
-          return subscriptionStatus === "pro";
-
+          return subscriptionStatus === "basic";
         default:
           return false;
       }
@@ -157,11 +172,8 @@ class BackgroundService {
   }
 
   async getPaymentLink(tier = "basic") {
-    const SUBSCRIPTION_URLS = {
-      basic: "https://buy.stripe.com/test_4gwcPT5uabyM86Y4gg",
-      pro: "https://buy.stripe.com/test_eVa5nrf4K6es4UM7st",
-    };
-    return SUBSCRIPTION_URLS[tier] || SUBSCRIPTION_URLS.basic;
+    // For MVP, only return basic tier link
+    return "https://buy.stripe.com/test_4gwcPT5uabyM86Y4gg";
   }
 
   async getPortalLink() {
@@ -170,52 +182,16 @@ class BackgroundService {
   }
 
   async getCustomIngredients() {
-    try {
-      const session = await authManager.getSession();
-      if (!session) return [];
-
-      // TODO: Implement actual custom ingredients fetch
-      return [
-        {
-          id: "1",
-          name: "Test Ingredient",
-          category: "preservatives",
-          concernLevel: "High",
-          notes: "Test notes",
-        },
-      ];
-    } catch (error) {
-      console.error("Error getting custom ingredients:", error);
-      return [];
-    }
+    // Not implemented for MVP (basic tier only)
+    return [];
   }
 
   async addCustomIngredient(ingredient) {
-    try {
-      const session = await authManager.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      // TODO: Implement actual ingredient addition
-      console.log("Adding ingredient:", ingredient);
-      return true;
-    } catch (error) {
-      console.error("Error adding custom ingredient:", error);
-      throw error;
-    }
+    throw new Error("Custom ingredients not available in basic tier");
   }
 
   async deleteCustomIngredient(id) {
-    try {
-      const session = await authManager.getSession();
-      if (!session) throw new Error("Not authenticated");
-
-      // TODO: Implement actual ingredient deletion
-      console.log("Deleting ingredient:", id);
-      return true;
-    } catch (error) {
-      console.error("Error deleting custom ingredient:", error);
-      throw error;
-    }
+    throw new Error("Custom ingredients not available in basic tier");
   }
 }
 
