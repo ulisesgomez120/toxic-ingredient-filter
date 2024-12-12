@@ -57,63 +57,72 @@
 
 - ✅ Added subscription management section
 - ✅ Implemented settings panel
-- ✅ Added custom ingredients UI (Pro feature)
+- ✅ Removed custom ingredients UI (Pro feature removed)
 - ✅ Added payment history display
 
-## 4. Next Implementation Steps
+## 4. Extension Subscription Integration ✅
 
-### a. Extension Subscription Integration:
+### a. Background Service Updates:
 
-1. Background Service Updates:
+- ✅ Add subscription check on extension startup
+- ✅ Implement subscription status checks using Supabase RPC
+- ✅ Add subscription status caching
+- ✅ Handle subscription expiration
 
-   - [ ] Add subscription check on extension startup
-   - [ ] Implement periodic subscription status checks
-   - [ ] Add subscription status caching
-   - [ ] Handle subscription expiration
+### b. Content Script Updates:
 
-2. Content Script Updates:
+- ✅ Add subscription status check before scanning
+- ✅ Implement feature gating based on subscription tier
+- ✅ Add subscription prompt for non-subscribers
+- ✅ Handle graceful degradation for expired subscriptions
 
-   - [ ] Add subscription status check before scanning
-   - [ ] Implement feature gating based on subscription tier
-   - [ ] Add subscription prompt for non-subscribers
-   - [ ] Handle graceful degradation for expired subscriptions
+### c. Popup Updates:
 
-3. Popup Updates:
+- ✅ Implement subscription flow initiation
+- ✅ Remove pro tier references
+- ✅ Update UI for basic tier only
+- ✅ Simplify subscription status handling
 
-   - [ ] Implement subscription flow initiation
+### d. Options Page Updates:
 
-4. Options Page Updates: (hold off on this, Stripe might have a portal for this.)
-   - [ ] Add subscription management section
-   - [ ] Show current plan details
-   - [ ] Add upgrade/downgrade options
-   - [ ] Display payment history
+- ✅ Update subscription management section
+- ✅ Show current plan details
+- ✅ Remove pro tier options
+- ✅ Simplify feature display
 
-### b. Feature Access Control:
+## 5. Feature Access Control ✅
 
-1. Basic Tier Features:
+### a. Basic Tier Features:
 
-   - [ ] use only basic feature for now.
+- ✅ Implement basic tier feature set
+- ✅ Remove pro tier features
+- ✅ Update feature descriptions
+- ✅ Simplify pricing display
 
-2. Access Management:
-   - [ ] Add subscription status checks
-   - [ ] Implement feature gates
-   - [ ] Handle grace periods
+### b. Access Management:
 
-### c. Testing & Validation:
+- ✅ Add subscription status checks
+- ✅ Implement feature gates
+- ✅ Handle grace periods
+- ✅ Remove pro tier checks
+
+## 6. Next Steps
+
+### a. Testing & Validation:
 
 1. Subscription Flow:
 
    - [ ] Test new subscription creation
    - [ ] Verify feature access control
-   - [ ] Test upgrade/downgrade flows
+   - [ ] Test subscription expiration
    - [ ] Validate payment processing
 
 2. Feature Access:
 
    - [ ] Test basic tier limitations
-   - [ ] Verify pro features
    - [ ] Test expired subscription handling
    - [ ] Validate upgrade prompts
+   - [ ] Verify feature gates
 
 3. Error Handling:
    - [ ] Test network failures
@@ -121,13 +130,13 @@
    - [ ] Test payment failures
    - [ ] Validate error messages
 
-### d. Documentation:
+### b. Documentation:
 
 1. User Documentation:
 
    - [ ] Document subscription features
    - [ ] Add pricing information
-   - [ ] Create upgrade guide
+   - [ ] Create subscription guide
    - [ ] Document feature limitations
 
 2. Developer Documentation:
@@ -140,30 +149,30 @@
 
 1. ✅ Users can authenticate directly in popup
 2. ✅ Users can view their subscription status
-3. ✅ Users can upgrade/downgrade subscriptions
+3. ✅ Users can subscribe to basic tier
 4. ✅ Feature access is properly controlled
 5. ✅ Settings page functions correctly
-6. [ ] Extension properly checks subscription status
-7. [ ] Features are correctly gated by subscription tier
-8. [ ] Subscription flow is smooth and user-friendly
-9. [ ] Error handling is robust and informative
+6. ✅ Extension properly checks subscription status
+7. ✅ Features are correctly gated by subscription tier
+8. ✅ Subscription flow is smooth and user-friendly
+9. ✅ Error handling is robust and informative
 10. [ ] Documentation is complete and accurate
 
 ## Notes & Considerations
 
 1. Recent Updates:
 
-   - ✅ Completed webhook handler implementation
-   - ✅ Set up Stripe integration
-   - ✅ Configured subscription tiers
-   - ✅ Implemented event tracking
+   - ✅ Removed pro tier functionality
+   - ✅ Updated UI for basic tier only
+   - ✅ Implemented subscription checks
+   - ✅ Simplified feature access control
 
 2. Next Focus:
 
-   - Implement subscription checks in extension
-   - Add feature gating
-   - Update UI for subscription flow
-   - Add proper error handling
+   - Complete testing suite
+   - Add comprehensive documentation
+   - Validate error handling
+   - Prepare for deployment
 
 3. Future Enhancements:
 
@@ -173,7 +182,7 @@
    - Consider offline support
 
 4. Performance Optimizations:
-   - Implement subscription status caching
-   - Optimize feature checks
-   - Minimize API calls
-   - Add proper error recovery
+   - ✅ Implement subscription status caching
+   - ✅ Optimize feature checks
+   - ✅ Minimize API calls
+   - ✅ Add proper error recovery
