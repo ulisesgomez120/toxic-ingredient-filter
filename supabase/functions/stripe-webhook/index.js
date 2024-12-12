@@ -27,9 +27,39 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+async function findSubscriptionId(stripeSubscriptionId) {
+  if (!stripeSubscriptionId) return null;
+
+  const { data, error } = await supabaseClient
+    .from("user_subscriptions")
+    .select("id")
+    .eq("stripe_subscription_id", stripeSubscriptionId)
+    .single();
+
+  if (error) {
+    console.error("Error finding subscription ID:", error);
+    return null;
+  }
+
+  return data?.id;
+}
+
 async function logEvent(eventData) {
+  // Extract relevant IDs from the event data
+  const stripeSubscriptionId =
+    eventData.event_data.subscription ||
+    eventData.event_data.object?.subscription ||
+    (eventData.event_data.object?.type === "subscription" ? eventData.event_data.object.id : null);
+
+  const stripeCustomerId = eventData.event_data.customer || eventData.event_data.object?.customer;
+
+  // Find the corresponding subscription_id if available
+  const subscriptionId = await findSubscriptionId(stripeSubscriptionId);
+
   const { error } = await supabaseClient.from("subscription_events").insert({
     ...eventData,
+    subscription_id: subscriptionId,
+    stripe_customer_id: stripeCustomerId,
     created_at: new Date(),
   });
 
