@@ -1,0 +1,1626 @@
+﻿"event_message","event_type","function_id","id","level","timestamp"
+"shutdown","Shutdown","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","6912f93b-f025-4cdd-849c-ded88b8a450f","log","1734054698684479"
+"shutdown","Shutdown","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","a280c32c-7099-48ac-b366-4b070d1fb23c","log","1734054698307403"
+"shutdown","Shutdown","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","71f6aef6-fefc-4a94-9743-74f263040a83","log","1734054695808678"
+"shutdown","Shutdown","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","418cd7aa-5ef4-48ff-b1d6-55300d6b954d","log","1734054694311682"
+"Successfully processed invoice payment
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","f0fba4b5-80d5-4f76-985f-cae23212ce89","log","1734054548662175"
+"Successfully updated subscription status
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","e441fbd3-c23a-4735-ab9c-a95afda3e3ea","log","1734054548662021"
+"Subscription details: {
+  "id": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+  "object": "subscription",
+  "application": null,
+  "application_fee_percent": null,
+  "automatic_tax": {
+    "disabled_reason": null,
+    "enabled": true,
+    "liability": {
+      "type": "self"
+    }
+  },
+  "billing_cycle_anchor": 1734054539,
+  "billing_cycle_anchor_config": null,
+  "billing_thresholds": null,
+  "cancel_at": null,
+  "cancel_at_period_end": false,
+  "canceled_at": null,
+  "cancellation_details": {
+    "comment": null,
+    "feedback": null,
+    "reason": null
+  },
+  "collection_method": "charge_automatically",
+  "created": 1734054539,
+  "currency": "usd",
+  "current_period_end": 1736732939,
+  "current_period_start": 1734054539,
+  "customer": "cus_ROAKzij01Yp5uk",
+  "days_until_due": null,
+  "default_payment_method": "pm_1QVNzyRxeyQrsSA7HG7QmvG2",
+  "default_source": null,
+  "default_tax_rates": [],
+  "description": null,
+  "discount": null,
+  "discounts": [],
+  "ended_at": null,
+  "invoice_settings": {
+    "account_tax_ids": null,
+    "issuer": {
+      "type": "self"
+    }
+  },
+  "items": {
+    "object": "list",
+    "data": [
+      {
+        "id": "si_ROAKGWDo1TSEQf",
+        "object": "subscription_item",
+        "billing_thresholds": null,
+        "created": 1734054539,
+        "discounts": [],
+        "metadata": {},
+        "plan": {
+          "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+          "object": "plan",
+          "active": true,
+          "aggregate_usage": null,
+          "amount": 199,
+          "amount_decimal": "199",
+          "billing_scheme": "per_unit",
+          "created": 1733288398,
+          "currency": "usd",
+          "interval": "month",
+          "interval_count": 1,
+          "livemode": false,
+          "metadata": {},
+          "meter": null,
+          "nickname": null,
+          "product": "prod_RKqNhsUp0RFltH",
+          "tiers_mode": null,
+          "transform_usage": null,
+          "trial_period_days": null,
+          "usage_type": "licensed"
+        },
+        "price": {
+          "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+          "object": "price",
+          "active": true,
+          "billing_scheme": "per_unit",
+          "created": 1733288398,
+          "currency": "usd",
+          "custom_unit_amount": null,
+          "livemode": false,
+          "lookup_key": null,
+          "metadata": {},
+          "nickname": null,
+          "product": "prod_RKqNhsUp0RFltH",
+          "recurring": {
+            "aggregate_usage": null,
+            "interval": "month",
+            "interval_count": 1,
+            "meter": null,
+            "trial_period_days": null,
+            "usage_type": "licensed"
+          },
+          "tax_behavior": "unspecified",
+          "tiers_mode": null,
+          "transform_quantity": null,
+          "type": "recurring",
+          "unit_amount": 199,
+          "unit_amount_decimal": "199"
+        },
+        "quantity": 1,
+        "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+        "tax_rates": []
+      }
+    ],
+    "has_more": false,
+    "total_count": 1,
+    "url": "/v1/subscription_items?subscription=sub_1QVNzzRxeyQrsSA7PmgmjWsO"
+  },
+  "latest_invoice": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+  "livemode": false,
+  "metadata": {},
+  "next_pending_invoice_item_invoice": null,
+  "on_behalf_of": null,
+  "pause_collection": null,
+  "payment_settings": {
+    "payment_method_options": {
+      "acss_debit": null,
+      "bancontact": null,
+      "card": {
+        "network": null,
+        "request_three_d_secure": "automatic"
+      },
+      "customer_balance": null,
+      "konbini": null,
+      "sepa_debit": null,
+      "us_bank_account": null
+    },
+    "payment_method_types": null,
+    "save_default_payment_method": "off"
+  },
+  "pending_invoice_item_interval": null,
+  "pending_setup_intent": null,
+  "pending_update": null,
+  "plan": {
+    "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+    "object": "plan",
+    "active": true,
+    "aggregate_usage": null,
+    "amount": 199,
+    "amount_decimal": "199",
+    "billing_scheme": "per_unit",
+    "created": 1733288398,
+    "currency": "usd",
+    "interval": "month",
+    "interval_count": 1,
+    "livemode": false,
+    "metadata": {},
+    "meter": null,
+    "nickname": null,
+    "product": "prod_RKqNhsUp0RFltH",
+    "tiers_mode": null,
+    "transform_usage": null,
+    "trial_period_days": null,
+    "usage_type": "licensed"
+  },
+  "quantity": 1,
+  "schedule": null,
+  "start_date": 1734054539,
+  "status": "active",
+  "test_clock": null,
+  "transfer_data": null,
+  "trial_end": null,
+  "trial_settings": {
+    "end_behavior": {
+      "missing_payment_method": "create_invoice"
+    }
+  },
+  "trial_start": null
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","17b708a1-deb3-402b-8737-4e8e07a37794","log","1734054548661866"
+"Updating subscription status for ID: sub_1QVNzzRxeyQrsSA7PmgmjWsO
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","cf6eea1d-bd08-438a-a255-2a46c8068421","log","1734054548661624"
+"Invoice details: {
+  "id": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+  "object": "invoice",
+  "account_country": "US",
+  "account_name": "Ulises Gomez",
+  "account_tax_ids": null,
+  "amount_due": 199,
+  "amount_paid": 199,
+  "amount_remaining": 0,
+  "amount_shipping": 0,
+  "application": null,
+  "application_fee_amount": null,
+  "attempt_count": 1,
+  "attempted": true,
+  "auto_advance": false,
+  "automatic_tax": {
+    "disabled_reason": null,
+    "enabled": true,
+    "liability": {
+      "type": "self"
+    },
+    "status": "complete"
+  },
+  "automatically_finalizes_at": null,
+  "billing_reason": "subscription_create",
+  "charge": "ch_3QVO00RxeyQrsSA71p33ueT2",
+  "collection_method": "charge_automatically",
+  "created": 1734054539,
+  "currency": "usd",
+  "custom_fields": null,
+  "customer": "cus_ROAKzij01Yp5uk",
+  "customer_address": {
+    "city": "North Hills",
+    "country": "US",
+    "line1": "9137 Langdon Avenue",
+    "line2": null,
+    "postal_code": "91343",
+    "state": "CA"
+  },
+  "customer_email": "d@d.com",
+  "customer_name": "dd",
+  "customer_phone": null,
+  "customer_shipping": null,
+  "customer_tax_exempt": "none",
+  "customer_tax_ids": [],
+  "default_payment_method": null,
+  "default_source": null,
+  "default_tax_rates": [],
+  "description": null,
+  "discount": null,
+  "discounts": [],
+  "due_date": null,
+  "effective_at": 1734054539,
+  "ending_balance": 0,
+  "footer": null,
+  "from_invoice": null,
+  "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC?s=ap",
+  "invoice_pdf": "https://pay.stripe.com/invoice/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC/pdf?s=ap",
+  "issuer": {
+    "type": "self"
+  },
+  "last_finalization_error": null,
+  "latest_revision": null,
+  "lines": {
+    "object": "list",
+    "data": [
+      {
+        "id": "il_1QVNzzRxeyQrsSA7oTQL2Ogv",
+        "object": "line_item",
+        "amount": 199,
+        "amount_excluding_tax": 199,
+        "currency": "usd",
+        "description": "1 × Basic Tier (at $1.99 / month)",
+        "discount_amounts": [],
+        "discountable": true,
+        "discounts": [],
+        "invoice": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+        "livemode": false,
+        "metadata": {},
+        "period": {
+          "end": 1736732939,
+          "start": 1734054539
+        },
+        "plan": {
+          "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+          "object": "plan",
+          "active": true,
+          "aggregate_usage": null,
+          "amount": 199,
+          "amount_decimal": "199",
+          "billing_scheme": "per_unit",
+          "created": 1733288398,
+          "currency": "usd",
+          "interval": "month",
+          "interval_count": 1,
+          "livemode": false,
+          "metadata": {},
+          "meter": null,
+          "nickname": null,
+          "product": "prod_RKqNhsUp0RFltH",
+          "tiers_mode": null,
+          "transform_usage": null,
+          "trial_period_days": null,
+          "usage_type": "licensed"
+        },
+        "pretax_credit_amounts": [],
+        "price": {
+          "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+          "object": "price",
+          "active": true,
+          "billing_scheme": "per_unit",
+          "created": 1733288398,
+          "currency": "usd",
+          "custom_unit_amount": null,
+          "livemode": false,
+          "lookup_key": null,
+          "metadata": {},
+          "nickname": null,
+          "product": "prod_RKqNhsUp0RFltH",
+          "recurring": {
+            "aggregate_usage": null,
+            "interval": "month",
+            "interval_count": 1,
+            "meter": null,
+            "trial_period_days": null,
+            "usage_type": "licensed"
+          },
+          "tax_behavior": "unspecified",
+          "tiers_mode": null,
+          "transform_quantity": null,
+          "type": "recurring",
+          "unit_amount": 199,
+          "unit_amount_decimal": "199"
+        },
+        "proration": false,
+        "proration_details": {
+          "credited_items": null
+        },
+        "quantity": 1,
+        "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+        "subscription_item": "si_ROAKGWDo1TSEQf",
+        "tax_amounts": [
+          {
+            "amount": 0,
+            "inclusive": false,
+            "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+            "taxability_reason": "not_collecting",
+            "taxable_amount": 0
+          }
+        ],
+        "tax_rates": [],
+        "type": "subscription",
+        "unit_amount_excluding_tax": "199"
+      }
+    ],
+    "has_more": false,
+    "total_count": 1,
+    "url": "/v1/invoices/in_1QVNzzRxeyQrsSA7eOdGLS68/lines"
+  },
+  "livemode": false,
+  "metadata": {},
+  "next_payment_attempt": null,
+  "number": "FBCE6481-0001",
+  "on_behalf_of": null,
+  "paid": true,
+  "paid_out_of_band": false,
+  "payment_intent": "pi_3QVO00RxeyQrsSA71FP6Cn4j",
+  "payment_settings": {
+    "default_mandate": null,
+    "payment_method_options": {
+      "acss_debit": null,
+      "bancontact": null,
+      "card": {
+        "request_three_d_secure": "automatic"
+      },
+      "customer_balance": null,
+      "konbini": null,
+      "sepa_debit": null,
+      "us_bank_account": null
+    },
+    "payment_method_types": null
+  },
+  "period_end": 1734054539,
+  "period_start": 1734054539,
+  "post_payment_credit_notes_amount": 0,
+  "pre_payment_credit_notes_amount": 0,
+  "quote": null,
+  "receipt_number": null,
+  "rendering": null,
+  "shipping_cost": null,
+  "shipping_details": null,
+  "starting_balance": 0,
+  "statement_descriptor": null,
+  "status": "paid",
+  "status_transitions": {
+    "finalized_at": 1734054539,
+    "marked_uncollectible_at": null,
+    "paid_at": 1734054541,
+    "voided_at": null
+  },
+  "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+  "subscription_details": {
+    "metadata": {}
+  },
+  "subtotal": 199,
+  "subtotal_excluding_tax": 199,
+  "tax": 0,
+  "test_clock": null,
+  "total": 199,
+  "total_discount_amounts": [],
+  "total_excluding_tax": 199,
+  "total_pretax_credit_amounts": [],
+  "total_tax_amounts": [
+    {
+      "amount": 0,
+      "inclusive": false,
+      "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+      "taxability_reason": "not_collecting",
+      "taxable_amount": 0
+    }
+  ],
+  "transfer_data": null,
+  "webhooks_delivered_at": null
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","3e5d9607-a340-4402-91d6-6c145c3d0115","log","1734054548661452"
+"Processing paid invoice for subscription: sub_1QVNzzRxeyQrsSA7PmgmjWsO
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","fe71aecd-d604-4e57-9fa2-d4ed19fb3231","log","1734054548661303"
+"Detected invoice paid event
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","dbba0119-25bc-442c-b216-748f9ba12cf2","log","1734054548661142"
+"Event data: {
+  "object": {
+    "id": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+    "object": "invoice",
+    "account_country": "US",
+    "account_name": "Ulises Gomez",
+    "account_tax_ids": null,
+    "amount_due": 199,
+    "amount_paid": 199,
+    "amount_remaining": 0,
+    "amount_shipping": 0,
+    "application": null,
+    "application_fee_amount": null,
+    "attempt_count": 1,
+    "attempted": true,
+    "auto_advance": false,
+    "automatic_tax": {
+      "disabled_reason": null,
+      "enabled": true,
+      "liability": {
+        "type": "self"
+      },
+      "status": "complete"
+    },
+    "automatically_finalizes_at": null,
+    "billing_reason": "subscription_create",
+    "charge": "ch_3QVO00RxeyQrsSA71p33ueT2",
+    "collection_method": "charge_automatically",
+    "created": 1734054539,
+    "currency": "usd",
+    "custom_fields": null,
+    "customer": "cus_ROAKzij01Yp5uk",
+    "customer_address": {
+      "city": "North Hills",
+      "country": "US",
+      "line1": "9137 Langdon Avenue",
+      "line2": null,
+      "postal_code": "91343",
+      "state": "CA"
+    },
+    "customer_email": "d@d.com",
+    "customer_name": "dd",
+    "customer_phone": null,
+    "customer_shipping": null,
+    "customer_tax_exempt": "none",
+    "customer_tax_ids": [],
+    "default_payment_method": null,
+    "default_source": null,
+    "default_tax_rates": [],
+    "description": null,
+    "discount": null,
+    "discounts": [],
+    "due_date": null,
+    "effective_at": 1734054539,
+    "ending_balance": 0,
+    "footer": null,
+    "from_invoice": null,
+    "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC?s=ap",
+    "invoice_pdf": "https://pay.stripe.com/invoice/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC/pdf?s=ap",
+    "issuer": {
+      "type": "self"
+    },
+    "last_finalization_error": null,
+    "latest_revision": null,
+    "lines": {
+      "object": "list",
+      "data": [
+        {
+          "id": "il_1QVNzzRxeyQrsSA7oTQL2Ogv",
+          "object": "line_item",
+          "amount": 199,
+          "amount_excluding_tax": 199,
+          "currency": "usd",
+          "description": "1 × Basic Tier (at $1.99 / month)",
+          "discount_amounts": [],
+          "discountable": true,
+          "discounts": [],
+          "invoice": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+          "livemode": false,
+          "metadata": {},
+          "period": {
+            "end": 1736732939,
+            "start": 1734054539
+          },
+          "plan": {
+            "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+            "object": "plan",
+            "active": true,
+            "aggregate_usage": null,
+            "amount": 199,
+            "amount_decimal": "199",
+            "billing_scheme": "per_unit",
+            "created": 1733288398,
+            "currency": "usd",
+            "interval": "month",
+            "interval_count": 1,
+            "livemode": false,
+            "metadata": {},
+            "meter": null,
+            "nickname": null,
+            "product": "prod_RKqNhsUp0RFltH",
+            "tiers_mode": null,
+            "transform_usage": null,
+            "trial_period_days": null,
+            "usage_type": "licensed"
+          },
+          "pretax_credit_amounts": [],
+          "price": {
+            "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+            "object": "price",
+            "active": true,
+            "billing_scheme": "per_unit",
+            "created": 1733288398,
+            "currency": "usd",
+            "custom_unit_amount": null,
+            "livemode": false,
+            "lookup_key": null,
+            "metadata": {},
+            "nickname": null,
+            "product": "prod_RKqNhsUp0RFltH",
+            "recurring": {
+              "aggregate_usage": null,
+              "interval": "month",
+              "interval_count": 1,
+              "meter": null,
+              "trial_period_days": null,
+              "usage_type": "licensed"
+            },
+            "tax_behavior": "unspecified",
+            "tiers_mode": null,
+            "transform_quantity": null,
+            "type": "recurring",
+            "unit_amount": 199,
+            "unit_amount_decimal": "199"
+          },
+          "proration": false,
+          "proration_details": {
+            "credited_items": null
+          },
+          "quantity": 1,
+          "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+          "subscription_item": "si_ROAKGWDo1TSEQf",
+          "tax_amounts": [
+            {
+              "amount": 0,
+              "inclusive": false,
+              "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+              "taxability_reason": "not_collecting",
+              "taxable_amount": 0
+            }
+          ],
+          "tax_rates": [],
+          "type": "subscription",
+          "unit_amount_excluding_tax": "199"
+        }
+      ],
+      "has_more": false,
+      "total_count": 1,
+      "url": "/v1/invoices/in_1QVNzzRxeyQrsSA7eOdGLS68/lines"
+    },
+    "livemode": false,
+    "metadata": {},
+    "next_payment_attempt": null,
+    "number": "FBCE6481-0001",
+    "on_behalf_of": null,
+    "paid": true,
+    "paid_out_of_band": false,
+    "payment_intent": "pi_3QVO00RxeyQrsSA71FP6Cn4j",
+    "payment_settings": {
+      "default_mandate": null,
+      "payment_method_options": {
+        "acss_debit": null,
+        "bancontact": null,
+        "card": {
+          "request_three_d_secure": "automatic"
+        },
+        "customer_balance": null,
+        "konbini": null,
+        "sepa_debit": null,
+        "us_bank_account": null
+      },
+      "payment_method_types": null
+    },
+    "period_end": 1734054539,
+    "period_start": 1734054539,
+    "post_payment_credit_notes_amount": 0,
+    "pre_payment_credit_notes_amount": 0,
+    "quote": null,
+    "receipt_number": null,
+    "rendering": null,
+    "shipping_cost": null,
+    "shipping_details": null,
+    "starting_balance": 0,
+    "statement_descriptor": null,
+    "status": "paid",
+    "status_transitions": {
+      "finalized_at": 1734054539,
+      "marked_uncollectible_at": null,
+      "paid_at": 1734054541,
+      "voided_at": null
+    },
+    "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+    "subscription_details": {
+      "metadata": {}
+    },
+    "subtotal": 199,
+    "subtotal_excluding_tax": 199,
+    "tax": 0,
+    "test_clock": null,
+    "total": 199,
+    "total_discount_amounts": [],
+    "total_excluding_tax": 199,
+    "total_pretax_credit_amounts": [],
+    "total_tax_amounts": [
+      {
+        "amount": 0,
+        "inclusive": false,
+        "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+        "taxability_reason": "not_collecting",
+        "taxable_amount": 0
+      }
+    ],
+    "transfer_data": null,
+    "webhooks_delivered_at": null
+  }
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","2198b11d-d996-4e5e-809b-65b8d558a99f","log","1734054548660967"
+"Processing event type: invoice.paid
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","3ba2ffdc-c8b2-4c39-b87c-6f26a81e98ab","log","1734054548660724"
+"Successfully verified webhook signature
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","debe988b-98e5-443f-85d5-ac1c08b6502c","log","1734054548660443"
+"Received webhook body: {
+  "id": "evt_1QVO03RxeyQrsSA7Os8U61rZ",
+  "object": "event",
+  "api_version": "2024-11-20.acacia",
+  "created": 1734054542,
+  "data": {
+    "object": {
+      "id": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+      "object": "invoice",
+      "account_country": "US",
+      "account_name": "Ulises Gomez",
+      "account_tax_ids": null,
+      "amount_due": 199,
+      "amount_paid": 199,
+      "amount_remaining": 0,
+      "amount_shipping": 0,
+      "application": null,
+      "application_fee_amount": null,
+      "attempt_count": 1,
+      "attempted": true,
+      "auto_advance": false,
+      "automatic_tax": {
+        "disabled_reason": null,
+        "enabled": true,
+        "liability": {
+          "type": "self"
+        },
+        "status": "complete"
+      },
+      "automatically_finalizes_at": null,
+      "billing_reason": "subscription_create",
+      "charge": "ch_3QVO00RxeyQrsSA71p33ueT2",
+      "collection_method": "charge_automatically",
+      "created": 1734054539,
+      "currency": "usd",
+      "custom_fields": null,
+      "customer": "cus_ROAKzij01Yp5uk",
+      "customer_address": {
+        "city": "North Hills",
+        "country": "US",
+        "line1": "9137 Langdon Avenue",
+        "line2": null,
+        "postal_code": "91343",
+        "state": "CA"
+      },
+      "customer_email": "d@d.com",
+      "customer_name": "dd",
+      "customer_phone": null,
+      "customer_shipping": null,
+      "customer_tax_exempt": "none",
+      "customer_tax_ids": [
+
+      ],
+      "default_payment_method": null,
+      "default_source": null,
+      "default_tax_rates": [
+
+      ],
+      "description": null,
+      "discount": null,
+      "discounts": [
+
+      ],
+      "due_date": null,
+      "effective_at": 1734054539,
+      "ending_balance": 0,
+      "footer": null,
+      "from_invoice": null,
+      "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC?s=ap",
+      "invoice_pdf": "https://pay.stripe.com/invoice/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC/pdf?s=ap",
+      "issuer": {
+        "type": "self"
+      },
+      "last_finalization_error": null,
+      "latest_revision": null,
+      "lines": {
+        "object": "list",
+        "data": [
+          {
+            "id": "il_1QVNzzRxeyQrsSA7oTQL2Ogv",
+            "object": "line_item",
+            "amount": 199,
+            "amount_excluding_tax": 199,
+            "currency": "usd",
+            "description": "1 × Basic Tier (at $1.99 / month)",
+            "discount_amounts": [
+
+            ],
+            "discountable": true,
+            "discounts": [
+
+            ],
+            "invoice": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+            "livemode": false,
+            "metadata": {
+            },
+            "period": {
+              "end": 1736732939,
+              "start": 1734054539
+            },
+            "plan": {
+              "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+              "object": "plan",
+              "active": true,
+              "aggregate_usage": null,
+              "amount": 199,
+              "amount_decimal": "199",
+              "billing_scheme": "per_unit",
+              "created": 1733288398,
+              "currency": "usd",
+              "interval": "month",
+              "interval_count": 1,
+              "livemode": false,
+              "metadata": {
+              },
+              "meter": null,
+              "nickname": null,
+              "product": "prod_RKqNhsUp0RFltH",
+              "tiers_mode": null,
+              "transform_usage": null,
+              "trial_period_days": null,
+              "usage_type": "licensed"
+            },
+            "pretax_credit_amounts": [
+
+            ],
+            "price": {
+              "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+              "object": "price",
+              "active": true,
+              "billing_scheme": "per_unit",
+              "created": 1733288398,
+              "currency": "usd",
+              "custom_unit_amount": null,
+              "livemode": false,
+              "lookup_key": null,
+              "metadata": {
+              },
+              "nickname": null,
+              "product": "prod_RKqNhsUp0RFltH",
+              "recurring": {
+                "aggregate_usage": null,
+                "interval": "month",
+                "interval_count": 1,
+                "meter": null,
+                "trial_period_days": null,
+                "usage_type": "licensed"
+              },
+              "tax_behavior": "unspecified",
+              "tiers_mode": null,
+              "transform_quantity": null,
+              "type": "recurring",
+              "unit_amount": 199,
+              "unit_amount_decimal": "199"
+            },
+            "proration": false,
+            "proration_details": {
+              "credited_items": null
+            },
+            "quantity": 1,
+            "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+            "subscription_item": "si_ROAKGWDo1TSEQf",
+            "tax_amounts": [
+              {
+                "amount": 0,
+                "inclusive": false,
+                "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+                "taxability_reason": "not_collecting",
+                "taxable_amount": 0
+              }
+            ],
+            "tax_rates": [
+
+            ],
+            "type": "subscription",
+            "unit_amount_excluding_tax": "199"
+          }
+        ],
+        "has_more": false,
+        "total_count": 1,
+        "url": "/v1/invoices/in_1QVNzzRxeyQrsSA7eOdGLS68/lines"
+      },
+      "livemode": false,
+      "metadata": {
+      },
+      "next_payment_attempt": null,
+      "number": "FBCE6481-0001",
+      "on_behalf_of": null,
+      "paid": true,
+      "paid_out_of_band": false,
+      "payment_intent": "pi_3QVO00RxeyQrsSA71FP6Cn4j",
+      "payment_settings": {
+        "default_mandate": null,
+        "payment_method_options": {
+          "acss_debit": null,
+          "bancontact": null,
+          "card": {
+            "request_three_d_secure": "automatic"
+          },
+          "customer_balance": null,
+          "konbini": null,
+          "sepa_debit": null,
+          "us_bank_account": null
+        },
+        "payment_method_types": null
+      },
+      "period_end": 1734054539,
+      "period_start": 1734054539,
+      "post_payment_credit_notes_amount": 0,
+      "pre_payment_credit_notes_amount": 0,
+      "quote": null,
+      "receipt_number": null,
+      "rendering": null,
+      "shipping_cost": null,
+      "shipping_details": null,
+      "starting_balance": 0,
+      "statement_descriptor": null,
+      "status": "paid",
+      "status_transitions": {
+        "finalized_at": 1734054539,
+        "marked_uncollectible_at": null,
+        "paid_at": 1734054541,
+        "voided_at": null
+      },
+      "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+      "subscription_details": {
+        "metadata": {
+        }
+      },
+      "subtotal": 199,
+      "subtotal_excluding_tax": 199,
+      "tax": 0,
+      "test_clock": null,
+      "total": 199,
+      "total_discount_amounts": [
+
+      ],
+      "total_excluding_tax": 199,
+      "total_pretax_credit_amounts": [
+
+      ],
+      "total_tax_amounts": [
+        {
+          "amount": 0,
+          "inclusive": false,
+          "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+          "taxability_reason": "not_collecting",
+          "taxable_amount": 0
+        }
+      ],
+      "transfer_data": null,
+      "webhooks_delivered_at": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_GKpGYG61rMW9OY",
+    "idempotency_key": "9cc76a78-74ca-46fd-9c53-64071288632a"
+  },
+  "type": "invoice.paid"
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","c8503822-1517-4e85-b30b-f8c5c0dbe4b8","log","1734054548660185"
+"Listening on http://localhost:9999/
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","bbe96daf-5a31-4b09-91e0-dc3ce11bdaa2","log","1734054548659925"
+"booted (time: 27ms)","Boot","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","5fa98c97-957c-416a-ba77-96358aab0d25","log","1734054548659307"
+"Skipping unhandled event type: invoice.created
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","573819ed-3712-4590-8457-242aa8de429e","log","1734054548277549"
+"Event data: {
+  "object": {
+    "id": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+    "object": "invoice",
+    "account_country": "US",
+    "account_name": "Ulises Gomez",
+    "account_tax_ids": null,
+    "amount_due": 199,
+    "amount_paid": 0,
+    "amount_remaining": 199,
+    "amount_shipping": 0,
+    "application": null,
+    "application_fee_amount": null,
+    "attempt_count": 0,
+    "attempted": false,
+    "auto_advance": false,
+    "automatic_tax": {
+      "disabled_reason": null,
+      "enabled": true,
+      "liability": {
+        "type": "self"
+      },
+      "status": "complete"
+    },
+    "automatically_finalizes_at": null,
+    "billing_reason": "subscription_create",
+    "charge": null,
+    "collection_method": "charge_automatically",
+    "created": 1734054539,
+    "currency": "usd",
+    "custom_fields": null,
+    "customer": "cus_ROAKzij01Yp5uk",
+    "customer_address": {
+      "city": "North Hills",
+      "country": "US",
+      "line1": "9137 Langdon Avenue",
+      "line2": null,
+      "postal_code": "91343",
+      "state": "CA"
+    },
+    "customer_email": "d@d.com",
+    "customer_name": "dd",
+    "customer_phone": null,
+    "customer_shipping": null,
+    "customer_tax_exempt": "none",
+    "customer_tax_ids": [],
+    "default_payment_method": null,
+    "default_source": null,
+    "default_tax_rates": [],
+    "description": null,
+    "discount": null,
+    "discounts": [],
+    "due_date": null,
+    "effective_at": 1734054539,
+    "ending_balance": 0,
+    "footer": null,
+    "from_invoice": null,
+    "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC?s=ap",
+    "invoice_pdf": "https://pay.stripe.com/invoice/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC/pdf?s=ap",
+    "issuer": {
+      "type": "self"
+    },
+    "last_finalization_error": null,
+    "latest_revision": null,
+    "lines": {
+      "object": "list",
+      "data": [
+        {
+          "id": "il_1QVNzzRxeyQrsSA7oTQL2Ogv",
+          "object": "line_item",
+          "amount": 199,
+          "amount_excluding_tax": 199,
+          "currency": "usd",
+          "description": "1 × Basic Tier (at $1.99 / month)",
+          "discount_amounts": [],
+          "discountable": true,
+          "discounts": [],
+          "invoice": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+          "livemode": false,
+          "metadata": {},
+          "period": {
+            "end": 1736732939,
+            "start": 1734054539
+          },
+          "plan": {
+            "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+            "object": "plan",
+            "active": true,
+            "aggregate_usage": null,
+            "amount": 199,
+            "amount_decimal": "199",
+            "billing_scheme": "per_unit",
+            "created": 1733288398,
+            "currency": "usd",
+            "interval": "month",
+            "interval_count": 1,
+            "livemode": false,
+            "metadata": {},
+            "meter": null,
+            "nickname": null,
+            "product": "prod_RKqNhsUp0RFltH",
+            "tiers_mode": null,
+            "transform_usage": null,
+            "trial_period_days": null,
+            "usage_type": "licensed"
+          },
+          "pretax_credit_amounts": [],
+          "price": {
+            "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+            "object": "price",
+            "active": true,
+            "billing_scheme": "per_unit",
+            "created": 1733288398,
+            "currency": "usd",
+            "custom_unit_amount": null,
+            "livemode": false,
+            "lookup_key": null,
+            "metadata": {},
+            "nickname": null,
+            "product": "prod_RKqNhsUp0RFltH",
+            "recurring": {
+              "aggregate_usage": null,
+              "interval": "month",
+              "interval_count": 1,
+              "meter": null,
+              "trial_period_days": null,
+              "usage_type": "licensed"
+            },
+            "tax_behavior": "unspecified",
+            "tiers_mode": null,
+            "transform_quantity": null,
+            "type": "recurring",
+            "unit_amount": 199,
+            "unit_amount_decimal": "199"
+          },
+          "proration": false,
+          "proration_details": {
+            "credited_items": null
+          },
+          "quantity": 1,
+          "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+          "subscription_item": "si_ROAKGWDo1TSEQf",
+          "tax_amounts": [
+            {
+              "amount": 0,
+              "inclusive": false,
+              "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+              "taxability_reason": "not_collecting",
+              "taxable_amount": 0
+            }
+          ],
+          "tax_rates": [],
+          "type": "subscription",
+          "unit_amount_excluding_tax": "199"
+        }
+      ],
+      "has_more": false,
+      "total_count": 1,
+      "url": "/v1/invoices/in_1QVNzzRxeyQrsSA7eOdGLS68/lines"
+    },
+    "livemode": false,
+    "metadata": {},
+    "next_payment_attempt": null,
+    "number": "FBCE6481-0001",
+    "on_behalf_of": null,
+    "paid": false,
+    "paid_out_of_band": false,
+    "payment_intent": "pi_3QVO00RxeyQrsSA71FP6Cn4j",
+    "payment_settings": {
+      "default_mandate": null,
+      "payment_method_options": {
+        "acss_debit": null,
+        "bancontact": null,
+        "card": {
+          "request_three_d_secure": "automatic"
+        },
+        "customer_balance": null,
+        "konbini": null,
+        "sepa_debit": null,
+        "us_bank_account": null
+      },
+      "payment_method_types": null
+    },
+    "period_end": 1734054539,
+    "period_start": 1734054539,
+    "post_payment_credit_notes_amount": 0,
+    "pre_payment_credit_notes_amount": 0,
+    "quote": null,
+    "receipt_number": null,
+    "rendering": null,
+    "shipping_cost": null,
+    "shipping_details": null,
+    "starting_balance": 0,
+    "statement_descriptor": null,
+    "status": "open",
+    "status_transitions": {
+      "finalized_at": 1734054539,
+      "marked_uncollectible_at": null,
+      "paid_at": null,
+      "voided_at": null
+    },
+    "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+    "subscription_details": {
+      "metadata": {}
+    },
+    "subtotal": 199,
+    "subtotal_excluding_tax": 199,
+    "tax": 0,
+    "test_clock": null,
+    "total": 199,
+    "total_discount_amounts": [],
+    "total_excluding_tax": 199,
+    "total_pretax_credit_amounts": [],
+    "total_tax_amounts": [
+      {
+        "amount": 0,
+        "inclusive": false,
+        "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+        "taxability_reason": "not_collecting",
+        "taxable_amount": 0
+      }
+    ],
+    "transfer_data": null,
+    "webhooks_delivered_at": null
+  }
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","7cbc3b02-63a3-4022-82d5-93dc0f5586c0","log","1734054548277406"
+"Processing event type: invoice.created
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","db803125-bc39-4c94-ab1d-73a59947b590","log","1734054548277265"
+"Successfully verified webhook signature
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","f5cc28b3-a831-4ec5-89fe-56ad9c09491a","log","1734054548277137"
+"Received webhook body: {
+  "id": "evt_1QVO03RxeyQrsSA7PpwINgkf",
+  "object": "event",
+  "api_version": "2024-11-20.acacia",
+  "created": 1734054540,
+  "data": {
+    "object": {
+      "id": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+      "object": "invoice",
+      "account_country": "US",
+      "account_name": "Ulises Gomez",
+      "account_tax_ids": null,
+      "amount_due": 199,
+      "amount_paid": 0,
+      "amount_remaining": 199,
+      "amount_shipping": 0,
+      "application": null,
+      "application_fee_amount": null,
+      "attempt_count": 0,
+      "attempted": false,
+      "auto_advance": false,
+      "automatic_tax": {
+        "disabled_reason": null,
+        "enabled": true,
+        "liability": {
+          "type": "self"
+        },
+        "status": "complete"
+      },
+      "automatically_finalizes_at": null,
+      "billing_reason": "subscription_create",
+      "charge": null,
+      "collection_method": "charge_automatically",
+      "created": 1734054539,
+      "currency": "usd",
+      "custom_fields": null,
+      "customer": "cus_ROAKzij01Yp5uk",
+      "customer_address": {
+        "city": "North Hills",
+        "country": "US",
+        "line1": "9137 Langdon Avenue",
+        "line2": null,
+        "postal_code": "91343",
+        "state": "CA"
+      },
+      "customer_email": "d@d.com",
+      "customer_name": "dd",
+      "customer_phone": null,
+      "customer_shipping": null,
+      "customer_tax_exempt": "none",
+      "customer_tax_ids": [
+
+      ],
+      "default_payment_method": null,
+      "default_source": null,
+      "default_tax_rates": [
+
+      ],
+      "description": null,
+      "discount": null,
+      "discounts": [
+
+      ],
+      "due_date": null,
+      "effective_at": 1734054539,
+      "ending_balance": 0,
+      "footer": null,
+      "from_invoice": null,
+      "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC?s=ap",
+      "invoice_pdf": "https://pay.stripe.com/invoice/acct_1QS9pIRxeyQrsSA7/test_YWNjdF8xUVM5cElSeGV5UXJzU0E3LF9ST0FLTzU0SDF4bnNabHNlZmRsZ1ZZZUxqUmk5OUxPLDEyNDU5NTM0Mw0200iH5Y8UZC/pdf?s=ap",
+      "issuer": {
+        "type": "self"
+      },
+      "last_finalization_error": null,
+      "latest_revision": null,
+      "lines": {
+        "object": "list",
+        "data": [
+          {
+            "id": "il_1QVNzzRxeyQrsSA7oTQL2Ogv",
+            "object": "line_item",
+            "amount": 199,
+            "amount_excluding_tax": 199,
+            "currency": "usd",
+            "description": "1 × Basic Tier (at $1.99 / month)",
+            "discount_amounts": [
+
+            ],
+            "discountable": true,
+            "discounts": [
+
+            ],
+            "invoice": "in_1QVNzzRxeyQrsSA7eOdGLS68",
+            "livemode": false,
+            "metadata": {
+            },
+            "period": {
+              "end": 1736732939,
+              "start": 1734054539
+            },
+            "plan": {
+              "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+              "object": "plan",
+              "active": true,
+              "aggregate_usage": null,
+              "amount": 199,
+              "amount_decimal": "199",
+              "billing_scheme": "per_unit",
+              "created": 1733288398,
+              "currency": "usd",
+              "interval": "month",
+              "interval_count": 1,
+              "livemode": false,
+              "metadata": {
+              },
+              "meter": null,
+              "nickname": null,
+              "product": "prod_RKqNhsUp0RFltH",
+              "tiers_mode": null,
+              "transform_usage": null,
+              "trial_period_days": null,
+              "usage_type": "licensed"
+            },
+            "pretax_credit_amounts": [
+
+            ],
+            "price": {
+              "id": "price_1QSAgsRxeyQrsSA7l4FWfeNc",
+              "object": "price",
+              "active": true,
+              "billing_scheme": "per_unit",
+              "created": 1733288398,
+              "currency": "usd",
+              "custom_unit_amount": null,
+              "livemode": false,
+              "lookup_key": null,
+              "metadata": {
+              },
+              "nickname": null,
+              "product": "prod_RKqNhsUp0RFltH",
+              "recurring": {
+                "aggregate_usage": null,
+                "interval": "month",
+                "interval_count": 1,
+                "meter": null,
+                "trial_period_days": null,
+                "usage_type": "licensed"
+              },
+              "tax_behavior": "unspecified",
+              "tiers_mode": null,
+              "transform_quantity": null,
+              "type": "recurring",
+              "unit_amount": 199,
+              "unit_amount_decimal": "199"
+            },
+            "proration": false,
+            "proration_details": {
+              "credited_items": null
+            },
+            "quantity": 1,
+            "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+            "subscription_item": "si_ROAKGWDo1TSEQf",
+            "tax_amounts": [
+              {
+                "amount": 0,
+                "inclusive": false,
+                "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+                "taxability_reason": "not_collecting",
+                "taxable_amount": 0
+              }
+            ],
+            "tax_rates": [
+
+            ],
+            "type": "subscription",
+            "unit_amount_excluding_tax": "199"
+          }
+        ],
+        "has_more": false,
+        "total_count": 1,
+        "url": "/v1/invoices/in_1QVNzzRxeyQrsSA7eOdGLS68/lines"
+      },
+      "livemode": false,
+      "metadata": {
+      },
+      "next_payment_attempt": null,
+      "number": "FBCE6481-0001",
+      "on_behalf_of": null,
+      "paid": false,
+      "paid_out_of_band": false,
+      "payment_intent": "pi_3QVO00RxeyQrsSA71FP6Cn4j",
+      "payment_settings": {
+        "default_mandate": null,
+        "payment_method_options": {
+          "acss_debit": null,
+          "bancontact": null,
+          "card": {
+            "request_three_d_secure": "automatic"
+          },
+          "customer_balance": null,
+          "konbini": null,
+          "sepa_debit": null,
+          "us_bank_account": null
+        },
+        "payment_method_types": null
+      },
+      "period_end": 1734054539,
+      "period_start": 1734054539,
+      "post_payment_credit_notes_amount": 0,
+      "pre_payment_credit_notes_amount": 0,
+      "quote": null,
+      "receipt_number": null,
+      "rendering": null,
+      "shipping_cost": null,
+      "shipping_details": null,
+      "starting_balance": 0,
+      "statement_descriptor": null,
+      "status": "open",
+      "status_transitions": {
+        "finalized_at": 1734054539,
+        "marked_uncollectible_at": null,
+        "paid_at": null,
+        "voided_at": null
+      },
+      "subscription": "sub_1QVNzzRxeyQrsSA7PmgmjWsO",
+      "subscription_details": {
+        "metadata": {
+        }
+      },
+      "subtotal": 199,
+      "subtotal_excluding_tax": 199,
+      "tax": 0,
+      "test_clock": null,
+      "total": 199,
+      "total_discount_amounts": [
+
+      ],
+      "total_excluding_tax": 199,
+      "total_pretax_credit_amounts": [
+
+      ],
+      "total_tax_amounts": [
+        {
+          "amount": 0,
+          "inclusive": false,
+          "tax_rate": "txr_1QUwahRxeyQrsSA7Pvds97g1",
+          "taxability_reason": "not_collecting",
+          "taxable_amount": 0
+        }
+      ],
+      "transfer_data": null,
+      "webhooks_delivered_at": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_GKpGYG61rMW9OY",
+    "idempotency_key": "9cc76a78-74ca-46fd-9c53-64071288632a"
+  },
+  "type": "invoice.created"
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","7fbf1060-11f4-416a-9c6c-cdf6f3aa8670","log","1734054548276982"
+"Listening on http://localhost:9999/
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","35480350-9007-4e9d-83d0-60428c7265ea","log","1734054548276735"
+"booted (time: 29ms)","Boot","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","0a3ca9e1-6b12-490e-a49c-8a2b1e3d9ab4","log","1734054548276053"
+"Skipping unhandled event type: customer.updated
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","ae8a69f7-9141-47f9-b06e-2c2ab974b5ca","log","1734054545773500"
+"Event data: {
+  "object": {
+    "id": "cus_ROAKzij01Yp5uk",
+    "object": "customer",
+    "address": {
+      "city": "North Hills",
+      "country": "US",
+      "line1": "9137 Langdon Avenue",
+      "line2": null,
+      "postal_code": "91343",
+      "state": "CA"
+    },
+    "balance": 0,
+    "created": 1734054538,
+    "currency": "usd",
+    "default_source": null,
+    "delinquent": false,
+    "description": null,
+    "discount": null,
+    "email": "d@d.com",
+    "invoice_prefix": "FBCE6481",
+    "invoice_settings": {
+      "custom_fields": null,
+      "default_payment_method": null,
+      "footer": null,
+      "rendering_options": null
+    },
+    "livemode": false,
+    "metadata": {},
+    "name": "dd",
+    "next_invoice_sequence": 2,
+    "phone": null,
+    "preferred_locales": [
+      "en-US"
+    ],
+    "shipping": null,
+    "tax_exempt": "none",
+    "test_clock": null
+  },
+  "previous_attributes": {
+    "currency": null
+  }
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","2c91dd6b-b5fd-44aa-a570-87570f9443f1","log","1734054545773221"
+"Processing event type: customer.updated
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","18eb6b81-1488-4987-a618-7c8ab061ad83","log","1734054545772946"
+"Successfully verified webhook signature
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","bc1a553c-66ae-4d4f-a45b-ffa056ad70a4","log","1734054545772792"
+"Received webhook body: {
+  "id": "evt_1QVO02RxeyQrsSA7AocTG0vE",
+  "object": "event",
+  "api_version": "2024-11-20.acacia",
+  "created": 1734054540,
+  "data": {
+    "object": {
+      "id": "cus_ROAKzij01Yp5uk",
+      "object": "customer",
+      "address": {
+        "city": "North Hills",
+        "country": "US",
+        "line1": "9137 Langdon Avenue",
+        "line2": null,
+        "postal_code": "91343",
+        "state": "CA"
+      },
+      "balance": 0,
+      "created": 1734054538,
+      "currency": "usd",
+      "default_source": null,
+      "delinquent": false,
+      "description": null,
+      "discount": null,
+      "email": "d@d.com",
+      "invoice_prefix": "FBCE6481",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+      },
+      "livemode": false,
+      "metadata": {
+      },
+      "name": "dd",
+      "next_invoice_sequence": 2,
+      "phone": null,
+      "preferred_locales": [
+        "en-US"
+      ],
+      "shipping": null,
+      "tax_exempt": "none",
+      "test_clock": null
+    },
+    "previous_attributes": {
+      "currency": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_GKpGYG61rMW9OY",
+    "idempotency_key": "9cc76a78-74ca-46fd-9c53-64071288632a"
+  },
+  "type": "customer.updated"
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","3aa52980-e9e7-4f00-be02-bcbcbaf0ed2c","log","1734054545772575"
+"Listening on http://localhost:9999/
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","c5c846d9-5cca-4bcf-a799-6f37c81d3277","log","1734054545772373"
+"booted (time: 27ms)","Boot","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","2fe578ec-7f4d-4638-8415-e79e41b5c623","log","1734054545772080"
+"Skipping unhandled event type: customer.created
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","9510f4b5-bdc0-4dca-bff4-44e95f16da6e","log","1734054544276903"
+"Event data: {
+  "object": {
+    "id": "cus_ROAKzij01Yp5uk",
+    "object": "customer",
+    "address": {
+      "city": "North Hills",
+      "country": "US",
+      "line1": "9137 Langdon Avenue",
+      "line2": null,
+      "postal_code": "91343",
+      "state": "CA"
+    },
+    "balance": 0,
+    "created": 1734054538,
+    "currency": null,
+    "default_source": null,
+    "delinquent": false,
+    "description": null,
+    "discount": null,
+    "email": "d@d.com",
+    "invoice_prefix": "FBCE6481",
+    "invoice_settings": {
+      "custom_fields": null,
+      "default_payment_method": null,
+      "footer": null,
+      "rendering_options": null
+    },
+    "livemode": false,
+    "metadata": {},
+    "name": "dd",
+    "next_invoice_sequence": 2,
+    "phone": null,
+    "preferred_locales": [
+      "en-US"
+    ],
+    "shipping": null,
+    "tax_exempt": "none",
+    "test_clock": null
+  }
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","38a7296d-935a-45a0-a38a-86ac3c71b86f","log","1734054544276661"
+"Processing event type: customer.created
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","786fb835-83b8-439e-9111-e8595427d5ef","log","1734054544276493"
+"Successfully verified webhook signature
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","2f4e0089-5a94-4837-a11f-d4112a106708","log","1734054544276247"
+"Received webhook body: {
+  "id": "evt_1QVO02RxeyQrsSA7Flg76mm3",
+  "object": "event",
+  "api_version": "2024-11-20.acacia",
+  "created": 1734054539,
+  "data": {
+    "object": {
+      "id": "cus_ROAKzij01Yp5uk",
+      "object": "customer",
+      "address": {
+        "city": "North Hills",
+        "country": "US",
+        "line1": "9137 Langdon Avenue",
+        "line2": null,
+        "postal_code": "91343",
+        "state": "CA"
+      },
+      "balance": 0,
+      "created": 1734054538,
+      "currency": null,
+      "default_source": null,
+      "delinquent": false,
+      "description": null,
+      "discount": null,
+      "email": "d@d.com",
+      "invoice_prefix": "FBCE6481",
+      "invoice_settings": {
+        "custom_fields": null,
+        "default_payment_method": null,
+        "footer": null,
+        "rendering_options": null
+      },
+      "livemode": false,
+      "metadata": {
+      },
+      "name": "dd",
+      "next_invoice_sequence": 2,
+      "phone": null,
+      "preferred_locales": [
+        "en-US"
+      ],
+      "shipping": null,
+      "tax_exempt": "none",
+      "test_clock": null
+    }
+  },
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": "req_GKpGYG61rMW9OY",
+    "idempotency_key": "9cc76a78-74ca-46fd-9c53-64071288632a"
+  },
+  "type": "customer.created"
+}
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","6be2201a-cef8-4d57-b79f-378659d5da09","log","1734054544276007"
+"Listening on http://localhost:9999/
+","Log","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","6480cc87-b78c-4470-b4fe-5267bbdbbc5f","log","1734054544275791"
+"booted (time: 29ms)","Boot","c5c7c71e-0893-47d5-bce5-45e937e3c2bc","9ecb280b-9ffa-4d8e-9778-049748b4acc6","log","1734054544275604"
