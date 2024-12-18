@@ -30,7 +30,6 @@ This Chrome extension helps users identify toxic ingredients in food products on
 
 - Two tiers:
   - Basic ($1.99): Access to default ingredients checking
-  - Pro: ($3.99): Basic + custom ingredients
 - Stripe integration for payment processing
 - Subscription status verification
 - Webhook handling for real-time updates

@@ -22,10 +22,6 @@
    stripe trigger invoice.paid
    ```
 
-   - Verify events are logged
-   - Check subscription status updates
-   - Validate customer record updates
-
 3. Subscription Updates
    ```bash
    stripe trigger customer.subscription.updated
