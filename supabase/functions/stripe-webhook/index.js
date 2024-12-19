@@ -27,29 +27,104 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-async function updateSubscriptionStatus(subscription) {
+async function updateSubscriptionStatus(subscription, eventType = null) {
   if (!subscription.id) {
     throw new Error("Missing subscription ID");
   }
 
   console.log(`Updating subscription status for ID: ${subscription.id}`);
+  console.log(`Event type: ${eventType}`);
+  console.log("Subscription details:", JSON.stringify(subscription, null, 2));
 
   try {
-    const { error } = await supabaseClient
+    const newPriceId = subscription?.items?.data[0]?.price?.id;
+
+    if (!newPriceId) {
+      console.error("Could not find price ID in Stripe subscription object");
+      throw new Error("Could not find price ID in Stripe subscription object");
+    }
+
+    // Get the current subscription from the database
+    const { data: currentSubscription, error: fetchError } = await supabaseClient
       .from("user_subscriptions")
-      .update({
-        status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000),
-        current_period_end: new Date(subscription.current_period_end * 1000),
-        cancel_at_period_end: subscription.cancel_at_period_end,
-        canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
-        updated_at: new Date(),
-      })
+      .select("id, subscription_tier_id, status")
+      .eq("stripe_subscription_id", subscription.id)
+      .single();
+
+    if (fetchError) {
+      console.error("Error fetching current subscription:", fetchError);
+      throw fetchError;
+    }
+
+    if (!currentSubscription) {
+      console.error("Could not find current subscription in database");
+      throw new Error("Could not find current subscription in database");
+    }
+
+    // Fetch the subscription tier from the database
+    const { data: newTierData, error: tierError } = await supabaseClient
+      .from("subscription_tiers")
+      .select("id")
+      .eq("stripe_price_id", newPriceId)
+      .single();
+
+    if (tierError || !newTierData) {
+      console.error("Error finding subscription tier:", tierError);
+      throw new Error(`No subscription tier found for price ID: ${newPriceId}`);
+    }
+
+    const newTierId = newTierData.id;
+
+    const updates = {
+      status: subscription.status,
+      current_period_start: new Date(subscription.current_period_start * 1000),
+      current_period_end: new Date(subscription.current_period_end * 1000),
+      cancel_at_period_end: subscription.cancel_at_period_end,
+      canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
+      updated_at: new Date(),
+    };
+
+    // Handle cancellation scenarios
+    if (eventType === "customer.subscription.updated" && subscription.cancel_at_period_end) {
+      console.log("Subscription marked for cancellation at period end");
+
+      // Log cancellation event
+      await supabaseClient.from("subscription_events").insert({
+        user_subscription_id: currentSubscription.id,
+        event_type: "cancellation_scheduled",
+        details: {
+          current_period_end: subscription.current_period_end,
+        },
+      });
+    }
+
+    if (eventType === "customer.subscription.deleted" || subscription.status === "canceled") {
+      console.log("Subscription canceled");
+      updates.status = "canceled";
+
+      // Log cancellation event
+      await supabaseClient.from("subscription_events").insert({
+        user_subscription_id: currentSubscription.id,
+        event_type: "subscription_canceled",
+        details: {
+          cancellation_reason: subscription.cancellation_details?.reason || "unknown",
+        },
+      });
+    }
+
+    if (currentSubscription.subscription_tier_id !== newTierId) {
+      console.log(`Subscription tier changed from ${currentSubscription.subscription_tier_id} to ${newTierId}`);
+      updates.subscription_tier_id = newTierId;
+    }
+
+    const { error: updateError } = await supabaseClient
+      .from("user_subscriptions")
+      .update(updates)
       .eq("stripe_subscription_id", subscription.id);
 
-    if (error) {
-      console.error("Error updating subscription:", error);
-      throw error;
+    if (updateError) {
+      console.error("Error updating subscription:", updateError);
+      throw updateError;
     }
     console.log("Successfully updated subscription status");
   } catch (error) {
@@ -93,7 +168,7 @@ async function createSubscriptionFromInvoice(invoice, subscription) {
   console.log("Invoice:", JSON.stringify(invoice, null, 2));
   console.log("Subscription:", JSON.stringify(subscription, null, 2));
 
-  const priceId = subscription?.plan?.product;
+  const priceId = subscription?.plan?.id;
   if (!priceId) {
     console.error("Missing price ID in subscription plan");
     throw new Error("Missing price ID in subscription plan");
@@ -160,7 +235,7 @@ async function createSubscriptionFromInvoice(invoice, subscription) {
 
     // Create the subscription record
     const { error } = await supabaseClient.from("user_subscriptions").insert({
-      user_id: userId, // Now using the proper UUID from auth.users
+      user_id: userId,
       subscription_tier_id: tierData.id,
       stripe_subscription_id: subscription.id,
       stripe_customer_id: invoice.customer,
@@ -178,6 +253,22 @@ async function createSubscriptionFromInvoice(invoice, subscription) {
       throw error;
     }
     console.log("Successfully created subscription record");
+
+    // Log subscription creation event
+    await supabaseClient.from("subscription_events").insert({
+      user_subscription_id: (
+        await supabaseClient
+          .from("user_subscriptions")
+          .select("id")
+          .eq("stripe_subscription_id", subscription.id)
+          .single()
+      ).data.id,
+      event_type: "subscription_created",
+      details: {
+        tier_id: tierData.id,
+        start_date: subscription.current_period_start,
+      },
+    });
   } catch (error) {
     console.error("Failed to create subscription:", error);
     throw new Error(`Failed to create subscription: ${error.message}`);
@@ -220,7 +311,7 @@ async function processEvent(event) {
     case "customer.subscription.updated":
     case "customer.subscription.deleted":
       console.log(`Detected subscription ${event.type} event`);
-      await updateSubscriptionStatus(eventObject);
+      await updateSubscriptionStatus(eventObject, event.type);
       break;
 
     case "invoice.paid":
