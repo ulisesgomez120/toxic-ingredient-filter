@@ -1,6 +1,133 @@
 // Default list of ingredients with potential health concerns
 export const DEFAULT_TOXIC_INGREDIENTS = [
   {
+    name: "Propylene Glycol",
+    category: "Humectants",
+    aliases: ["E1520", "1,2-Propanediol", "Methyl glycol"],
+    isToxic: true,
+    concernLevel: "Moderate",
+    healthEffects: [
+      "Skin irritation",
+      "Allergic reactions",
+      "Central nervous system effects",
+      "Potential liver and kidney effects",
+    ],
+    sources: [
+      {
+        title: "Safety Assessment of Propylene Glycol",
+        publisher: "International Journal of Toxicology",
+        url: "https://pubmed.ncbi.nlm.nih.gov/1937000/",
+        year: 2012,
+      },
+    ],
+  },
+  {
+    name: "Phosphoric Acid",
+    category: "Acidulants",
+    aliases: ["E338", "Orthophosphoric acid"],
+    isToxic: true,
+    concernLevel: "Moderate",
+    healthEffects: ["Decreased bone density", "Dental erosion", "Kidney problems", "Increased risk of osteoporosis"],
+    sources: [
+      {
+        title: "Colas, but not other carbonated beverages, are associated with low bone mineral density in older women",
+        publisher: "American Journal of Clinical Nutrition",
+        url: "https://pubmed.ncbi.nlm.nih.gov/17023723/",
+        year: 2006,
+      },
+    ],
+  },
+  {
+    name: "Sodium Benzoate",
+    category: "Preservatives",
+    aliases: ["E211", "Benzoic acid sodium salt"],
+    isToxic: true,
+    concernLevel: "Moderate",
+    healthEffects: [
+      "Can form benzene when combined with vitamin C",
+      "Hyperactivity in children",
+      "Allergic reactions",
+      "Potential DNA damage",
+    ],
+    sources: [
+      {
+        title: "Sodium benzoate-induced repeated episodes of acute urticaria/angio-oedema",
+        publisher: "Journal of Health Science",
+        url: "https://pubmed.ncbi.nlm.nih.gov/18274234/",
+        year: 2008,
+      },
+    ],
+  },
+  {
+    name: "Carrageenan",
+    category: "Thickeners",
+    aliases: ["E407", "Irish moss extract"],
+    isToxic: true,
+    concernLevel: "Moderate",
+    healthEffects: [
+      "Inflammation",
+      "Digestive problems",
+      "Potential carcinogenic effects",
+      "Immune system suppression",
+    ],
+    sources: [
+      {
+        title: "Review of harmful gastrointestinal effects of carrageenan in animal experiments",
+        publisher: "Environmental Health Perspectives",
+        url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1242073/",
+        year: 2001,
+      },
+    ],
+  },
+  {
+    name: "Monosodium Glutamate",
+    category: "Flavor Enhancers",
+    aliases: ["MSG", "E621", "Glutamic acid monosodium salt"],
+    isToxic: true,
+    concernLevel: "Moderate",
+    healthEffects: ["Headaches", "Nausea", "Chest pain", "Weakness", "Neurological symptoms"],
+    sources: [
+      {
+        title: "The toxicity/safety of processed free glutamic acid (MSG)",
+        publisher: "Clinical and Experimental Allergy",
+        url: "https://pubmed.ncbi.nlm.nih.gov/19438927/",
+        year: 2009,
+      },
+    ],
+  },
+  {
+    name: "Aspartame",
+    category: "Artificial Sweeteners",
+    aliases: ["E951", "NutraSweet", "Equal"],
+    isToxic: true,
+    concernLevel: "High",
+    healthEffects: ["Headaches", "Seizures", "Depression", "Anxiety", "Memory loss"],
+    sources: [
+      {
+        title: "Direct and indirect cellular effects of aspartame on the brain",
+        publisher: "European Journal of Clinical Nutrition",
+        url: "https://pubmed.ncbi.nlm.nih.gov/17684524/",
+        year: 2008,
+      },
+    ],
+  },
+  {
+    name: "BHT",
+    category: "Preservatives",
+    aliases: ["E321", "Butylated hydroxytoluene"],
+    isToxic: true,
+    concernLevel: "Moderate",
+    healthEffects: ["Potential carcinogen", "Liver effects", "Kidney effects", "Behavioral effects"],
+    sources: [
+      {
+        title: "Toxicology and carcinogenesis studies of butylated hydroxytoluene",
+        publisher: "National Toxicology Program",
+        url: "https://ntp.niehs.nih.gov/ntp/htdocs/lt_rpts/tr459.pdf",
+        year: 2002,
+      },
+    ],
+  },
+  {
     name: "High Fructose Corn Syrup",
     category: "Sweeteners",
     aliases: ["HFCS", "Corn syrup high fructose", "Isoglucose"],
