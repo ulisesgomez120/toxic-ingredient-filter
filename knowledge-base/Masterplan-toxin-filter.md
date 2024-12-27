@@ -158,3 +158,7 @@ A Chrome extension that helps users make healthier food choices on Instacart by 
    - Enhanced batch processing
    - Improved caching strategies
    - Better variant handling
+
+### Constraint: Ingredient Data Availability on Instacart
+
+A key constraint in developing this extension is the way Instacart presents product information. **Ingredient lists are not readily available on Instacart's homepage or category listing pages.** Ingredient details are typically only accessible when a user clicks on a specific product, opening a dedicated product page or a modal window that displays comprehensive product information, including the ingredient list.

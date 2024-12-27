@@ -86,49 +86,34 @@ export class ProductDataManager {
    */
   async processChunk(chunk) {
     try {
+      // Get all external IDs from the chunk
+      const externalIds = chunk.map(({ productData }) => productData.external_id);
+
+      // Get toxin analysis for all products in chunk at once
+      const toxinAnalysis = await this.dbHandler.getToxinAnalysisByExternalIds(externalIds);
+
       const results = await Promise.all(
         chunk.map(async ({ productId, productData }) => {
           try {
-            // Format data for database
-            const formattedData = this.formatProductData(productData);
+            const analysis = toxinAnalysis[productData.external_id];
 
-            // Try to find existing product group
-            const productGroup = await this.dbHandler.findOrCreateProductGroup({
-              brand: formattedData.brand,
-              name: formattedData.name,
-            });
-
-            if (productGroup) {
-              // Save product group to cache
-              await this.cacheManager.saveProductGroup(productGroup);
-
-              // Get ingredients
-              const ingredients = await this.dbHandler.getProductWithIngredients(productGroup.id);
-
-              if (ingredients) {
-                // Save ingredients to cache
-                let toxin_flags =
-                  ingredients.toxin_flags === null
-                    ? null
-                    : ingredients.toxin_flags.length > 0
-                    ? ingredients.toxin_flags
-                    : [];
-                await this.cacheManager.saveIngredients(productGroup.id, ingredients.ingredients, toxin_flags);
-
-                const enrichedProduct = {
-                  ...productData,
-                  ...ingredients,
-                };
-
-                // Save complete product data to cache
+            if (analysis) {
+              // Save to cache
+              if (analysis.hasAnalysis) {
                 await this.cacheManager.saveProduct(
-                  enrichedProduct.product_group_id,
-                  enrichedProduct.ingredients,
-                  enrichedProduct.toxin_flags
+                  productId,
+                  null, // ingredients not needed for list view
+                  analysis.toxinFlags
                 );
-
-                return enrichedProduct;
               }
+
+              const enrichedProduct = {
+                ...productData,
+                toxin_flags: analysis.toxinFlags,
+                has_analysis: analysis.hasAnalysis,
+              };
+
+              return enrichedProduct;
             }
             return null;
           } catch (error) {

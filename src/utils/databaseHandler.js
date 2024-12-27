@@ -535,6 +535,43 @@ class DatabaseHandler {
 
     return headers;
   }
+
+  async getToxinAnalysisByExternalIds(externalIds) {
+    try {
+      if (!Array.isArray(externalIds) || externalIds.length === 0) {
+        throw new Error("External IDs must be provided as a non-empty array");
+      }
+
+      // Build the query string for IN clause
+      const externalIdsQuery = externalIds.map((id) => `'${id}'`).join(",");
+
+      // Construct the URL with the query - following the correct relationship path
+      const url = `${this.supabaseUrl}/rest/v1/product_listings?select=external_id,products(product_group_id,product_groups(id,product_group_ingredients(toxin_flags)))&external_id=in.(${externalIdsQuery})`;
+
+      const response = await fetch(url, {
+        headers: this.getHeaders(),
+      });
+
+      const listings = await this.handleResponse(response, "Failed to fetch toxin analysis");
+
+      // Process and format the results
+      const results = {};
+      listings.forEach((listing) => {
+        const productGroup = listing.products?.product_groups;
+        const ingredients = productGroup?.product_group_ingredients?.[0];
+
+        results[listing.external_id] = {
+          toxinFlags: ingredients?.toxin_flags || null,
+          hasAnalysis: !!ingredients,
+        };
+      });
+
+      return results;
+    } catch (error) {
+      console.error("Error in getToxinAnalysisByExternalIds:", error);
+      throw error;
+    }
+  }
 }
 
 export default DatabaseHandler;
