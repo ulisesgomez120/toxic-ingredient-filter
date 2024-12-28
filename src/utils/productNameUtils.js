@@ -10,12 +10,16 @@ export const normalizeProductName = (name) => {
 
   return name
     .toLowerCase()
-    .replace(/[®™]/g, "") // Remove trademark symbols
+    .replace(/[®™©]/g, "") // Remove trademark and copyright symbols
     .replace(/['"""'']/g, "") // Remove quotes
     .replace(/&/g, "and") // Replace & with and
+    .replace(/w\//g, "with") // Replace w/ with with
+    .replace(/(\d+)\s*oz/g, "") // Remove oz measurements
+    .replace(/(\d+)\s*(fl\.?\s*oz|ml|g|lbs?|pounds?|pack|ct|count|pieces?)/gi, "") // Remove common unit measurements
     .replace(/[^a-z0-9\s-]/g, "") // Remove special characters except hyphen
     .replace(/\s+/g, " ") // Normalize spaces
     .replace(/^(the|a|an)\s+/i, "") // Remove leading articles
+    .replace(/\s+(pack|box|bottle|can|container|jar)s?\b/gi, "") // Remove container types
     .trim();
 };
 

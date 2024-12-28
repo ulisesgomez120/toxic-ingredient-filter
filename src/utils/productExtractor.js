@@ -74,8 +74,26 @@ function extractBrandFromName(name) {
 
 // Helper functions for list extraction
 function getExternalId(element) {
+  // Get the data-testid attribute which contains the full external ID
   const testId = element.getAttribute("data-testid") || "";
-  return testId.replace("item_list_item_", "");
+  if (testId.startsWith("item_list_item_")) {
+    // The testId already contains the full external ID format (items_XXXXX-YYYYY)
+    return testId.replace("item_list_item_", "");
+  }
+
+  // Fallback: Try to extract ID from the element's ID attribute
+  const elementId = element.id;
+  if (elementId && elementId.includes("items_")) {
+    return elementId;
+  }
+
+  // Try to find a child element with an ID containing "items_"
+  const childWithId = element.querySelector('[id*="items_"]');
+  if (childWithId) {
+    return childWithId.id;
+  }
+
+  return testId;
 }
 
 function getUrlPath(element) {
@@ -84,30 +102,56 @@ function getUrlPath(element) {
 }
 
 function getProductName(element) {
-  const nameElement = element.querySelector(".e-147kl2c");
-  return nameElement ? nameElement.textContent.trim() : "";
+  // Try multiple selectors for product name
+  const nameSelectors = [
+    ".e-xahufp", // Current Instacart selector
+    ".e-147kl2c", // Original selector
+    '[data-testid="item_card_title"]', // Common test ID pattern
+    ".e-1h5amic", // Alternative class
+    ".item-card__title", // Semantic class name
+  ];
+
+  for (const selector of nameSelectors) {
+    const nameElement = element.querySelector(selector);
+    if (nameElement && nameElement.textContent.trim()) {
+      return nameElement.textContent.trim();
+    }
+  }
+
+  // Fallback: Try to find any element with "title" in its class or data attribute
+  const titleElement = element.querySelector('[class*="title" i], [data-*="title" i]');
+  return titleElement ? titleElement.textContent.trim() : "";
 }
 
 function getPriceInfo(element) {
-  const priceElement = element.querySelector(".e-1ip314g");
+  // Try multiple selectors for price
+  const priceSelectors = [
+    ".e-1x7s36o", // Current Instacart price selector
+    ".e-1ip314g", // Original selector
+  ];
+
   let priceAmount = 0;
 
-  if (priceElement) {
-    // Get all text nodes to handle superscript numbers
-    const textNodes = Array.from(priceElement.childNodes)
-      .filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE)
-      .map((node) => node.textContent.trim())
-      .join("");
+  for (const selector of priceSelectors) {
+    const priceElement = element.querySelector(selector);
+    if (priceElement) {
+      // Get all text nodes to handle superscript numbers
+      const textNodes = Array.from(priceElement.childNodes)
+        .filter((node) => node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE)
+        .map((node) => node.textContent.trim())
+        .join("");
 
-    // Remove dollar sign and any whitespace
-    const priceText = textNodes.replace("$", "").replace(/\s+/g, "");
+      // Remove dollar sign and any whitespace
+      const priceText = textNodes.replace("$", "").replace(/\s+/g, "");
 
-    // Convert to cents then to dollars
-    if (priceText) {
-      const cents = parseInt(priceText, 10);
-      priceAmount = cents / 100;
+      // Convert to dollars
+      if (priceText) {
+        priceAmount = parseFloat(priceText);
+        break; // Found a valid price, stop looking
+      }
     }
   }
+
   return {
     price_amount: priceAmount || 0,
     price_unit: "each", // default, can be updated based on UI
@@ -166,13 +210,21 @@ function extractSizeFromName(name) {
 }
 
 function getSizeInfo(element, productName) {
+  // Try multiple selectors for size
+  const sizeSelectors = [
+    ".e-cauxk8", // Current Instacart size selector
+    ".e-an4oxa", // Original selector
+  ];
+
   // First try to get size from dedicated element
-  const sizeElement = element.querySelector(".e-an4oxa");
-  if (sizeElement) {
-    const sizeText = sizeElement.getAttribute("title") || sizeElement.textContent;
-    const elementSize = parseSizeAndUnit(sizeText);
-    if (elementSize.size && elementSize.base_unit) {
-      return elementSize;
+  for (const selector of sizeSelectors) {
+    const sizeElement = element.querySelector(selector);
+    if (sizeElement) {
+      const sizeText = sizeElement.getAttribute("title") || sizeElement.textContent;
+      const elementSize = parseSizeAndUnit(sizeText);
+      if (elementSize.size && elementSize.base_unit) {
+        return elementSize;
+      }
     }
   }
 
@@ -256,27 +308,33 @@ function getModalName(modalContent) {
 }
 
 function getModalExternalId(modalContent) {
-  // Try to get the ID from data-testid attribute
-  const detailsElement = modalContent.querySelector('[data-testid^="item_details_"]');
-  if (detailsElement) {
-    const testId = detailsElement.getAttribute("data-testid");
-    return testId.replace("item_details_", "");
+  // Try to get ID from URL first since it's most reliable
+  const urlMatch = window.location.href.match(/\/(\d+)(?:\?|$)/);
+  if (urlMatch) {
+    return `items_${urlMatch[1]}`;
   }
 
-  // Fallback: Try to get from ingredients section ID
+  // Try to get from ingredients section ID
   const ingredientsSection = modalContent.querySelector('div[id$="-Ingredients"]');
   if (ingredientsSection) {
     const sectionId = ingredientsSection.id;
     const match = sectionId.match(/(\d+)-Ingredients$/);
     if (match) {
-      return match[1];
+      return `items_${match[1]}`;
     }
   }
 
-  // Fallback: Try to get from URL
-  const urlMatch = window.location.href.match(/\/items\/(\d+)/);
-  if (urlMatch) {
-    return urlMatch[1];
+  // Try to get the ID from data-testid attribute
+  const detailsElement = modalContent.querySelector('[data-testid^="item_details_"]');
+  if (detailsElement) {
+    const testId = detailsElement.getAttribute("data-testid");
+    return `items_${testId.replace("item_details_", "")}`;
+  }
+
+  // Try to find any element with an ID containing "items_"
+  const elementWithItemsId = modalContent.querySelector('[id*="items_"]');
+  if (elementWithItemsId) {
+    return elementWithItemsId.id;
   }
 
   return null;
@@ -321,13 +379,23 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
     const brand = name ? extractBrandFromName(name) : "";
     // Merge with list data if provided, otherwise return extracted data
     if (listData) {
+      console.log("listData:", listData);
       return {
         ...listData,
+        name: name || listData.name, // Use modal name if list name is empty
         ingredients,
         brand: brand || listData.brand, // Use extracted brand or fallback to list data brand
       };
     }
-
+    console.log("some data", {
+      name,
+      brand,
+      external_id,
+      url_path,
+      retailerId,
+      ingredients,
+      price_amount,
+    });
     return {
       name,
       brand,
@@ -343,7 +411,6 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
   }
 }
 
-// Usage example:
 async function processProductList(htmlContent) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(htmlContent, "text/html");

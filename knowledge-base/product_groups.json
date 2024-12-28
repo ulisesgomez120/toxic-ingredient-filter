@@ -1,0 +1,416 @@
+[
+  {
+    "id": 3924,
+    "brand": "Lime 42",
+    "base_name": "Lime 42",
+    "created_at": "2024-12-27 18:31:33.441+00",
+    "updated_at": "2024-12-27 18:31:33.441+00",
+    "normalized_brand": "lime 42",
+    "normalized_base_name": "lime 42"
+  },
+  {
+    "id": 3925,
+    "brand": "Popsicle Ice Pops Tropicals",
+    "base_name": "Popsicle Ice Pops Tropicals",
+    "created_at": "2024-12-27 18:31:33.446+00",
+    "updated_at": "2024-12-27 18:31:33.446+00",
+    "normalized_brand": "popsicle ice pops tropicals",
+    "normalized_base_name": "popsicle ice pops tropicals"
+  },
+  {
+    "id": 3926,
+    "brand": "Great Value Cheese",
+    "base_name": "Finely Shredded, Mozzarella",
+    "created_at": "2024-12-27 18:31:33.472+00",
+    "updated_at": "2024-12-27 18:31:33.472+00",
+    "normalized_brand": "great value cheese",
+    "normalized_base_name": "finely shredded mozzarella"
+  },
+  {
+    "id": 3927,
+    "brand": "Strawberries",
+    "base_name": "Strawberries",
+    "created_at": "2024-12-27 18:31:33.469+00",
+    "updated_at": "2024-12-27 18:31:33.469+00",
+    "normalized_brand": "strawberries",
+    "normalized_base_name": "strawberries"
+  },
+  {
+    "id": 3928,
+    "brand": "Green Seedless Grapes Bag",
+    "base_name": "Green Seedless Grapes Bag",
+    "created_at": "2024-12-27 18:31:33.47+00",
+    "updated_at": "2024-12-27 18:31:33.47+00",
+    "normalized_brand": "green seedless grapes bag",
+    "normalized_base_name": "green seedless grapes bag"
+  },
+  {
+    "id": 3929,
+    "brand": "Minute Maid Tropical Punch Carton",
+    "base_name": "Minute Maid Tropical Punch Carton",
+    "created_at": "2024-12-27 18:31:33.484+00",
+    "updated_at": "2024-12-27 18:31:33.484+00",
+    "normalized_brand": "minute maid tropical punch carton",
+    "normalized_base_name": "minute maid tropical punch carton"
+  },
+  {
+    "id": 3930,
+    "brand": "Roma Tomato",
+    "base_name": "Roma Tomato",
+    "created_at": "2024-12-27 18:31:33.488+00",
+    "updated_at": "2024-12-27 18:31:33.488+00",
+    "normalized_brand": "roma tomato",
+    "normalized_base_name": "roma tomato"
+  },
+  {
+    "id": 3931,
+    "brand": "Great Value Milk",
+    "base_name": "Vitamin D, Whole",
+    "created_at": "2024-12-27 18:31:33.505+00",
+    "updated_at": "2024-12-27 18:31:33.505+00",
+    "normalized_brand": "great value milk",
+    "normalized_base_name": "vitamin d whole"
+  },
+  {
+    "id": 3932,
+    "brand": "Kraft American Cheese Slices",
+    "base_name": "Kraft American Cheese Slices",
+    "created_at": "2024-12-27 18:31:33.505+00",
+    "updated_at": "2024-12-27 18:31:33.505+00",
+    "normalized_brand": "kraft american cheese slices",
+    "normalized_base_name": "kraft american cheese slices"
+  },
+  {
+    "id": 3933,
+    "brand": "Best Foods Real Mayonnaise Mayo Jar",
+    "base_name": "Best Foods Real Mayonnaise Mayo Jar",
+    "created_at": "2024-12-27 18:31:33.57+00",
+    "updated_at": "2024-12-27 18:31:33.57+00",
+    "normalized_brand": "best foods real mayonnaise mayo jar",
+    "normalized_base_name": "best foods real mayonnaise mayo jar"
+  },
+  {
+    "id": 3934,
+    "brand": "Little Debbie Brownies",
+    "base_name": "with Chocolate Chip Candy, Cosmic, Big Pack",
+    "created_at": "2024-12-27 18:31:33.653+00",
+    "updated_at": "2024-12-27 18:31:33.653+00",
+    "normalized_brand": "little debbie brownies",
+    "normalized_base_name": "with chocolate chip candy cosmic big pack"
+  },
+  {
+    "id": 3935,
+    "brand": "Red Onions",
+    "base_name": "Red Onions",
+    "created_at": "2024-12-27 18:31:33.679+00",
+    "updated_at": "2024-12-27 18:31:33.679+00",
+    "normalized_brand": "red onions",
+    "normalized_base_name": "red onions"
+  },
+  {
+    "id": 3936,
+    "brand": "Minute Maid Fruit Punch",
+    "base_name": "Made W/ Real Fruit Juice",
+    "created_at": "2024-12-27 18:31:33.684+00",
+    "updated_at": "2024-12-27 18:31:33.684+00",
+    "normalized_brand": "minute maid fruit punch",
+    "normalized_base_name": "made w real fruit juice"
+  },
+  {
+    "id": 3937,
+    "brand": "Halos California Clementines",
+    "base_name": "Halos California Clementines",
+    "created_at": "2024-12-27 18:31:33.702+00",
+    "updated_at": "2024-12-27 18:31:33.702+00",
+    "normalized_brand": "halos california clementines",
+    "normalized_base_name": "halos california clementines"
+  },
+  {
+    "id": 3938,
+    "brand": "Organic Bananas",
+    "base_name": "Organic Bananas",
+    "created_at": "2024-12-27 18:31:33.701+00",
+    "updated_at": "2024-12-27 18:31:33.701+00",
+    "normalized_brand": "organic bananas",
+    "normalized_base_name": "organic bananas"
+  },
+  {
+    "id": 3939,
+    "brand": "Great Value 100% Juice",
+    "base_name": "Apple",
+    "created_at": "2024-12-27 18:31:33.711+00",
+    "updated_at": "2024-12-27 18:31:33.711+00",
+    "normalized_brand": "great value 100 juice",
+    "normalized_base_name": "apple"
+  },
+  {
+    "id": 3940,
+    "brand": "Cucumber",
+    "base_name": "Cucumber",
+    "created_at": "2024-12-27 18:31:33.717+00",
+    "updated_at": "2024-12-27 18:31:33.717+00",
+    "normalized_brand": "cucumber",
+    "normalized_base_name": "cucumber"
+  },
+  {
+    "id": 3941,
+    "brand": "Great Value Apple Juice",
+    "base_name": "Great Value Apple Juice",
+    "created_at": "2024-12-27 18:31:33.718+00",
+    "updated_at": "2024-12-27 18:31:33.718+00",
+    "normalized_brand": "great value apple juice",
+    "normalized_base_name": "great value apple juice"
+  },
+  {
+    "id": 3942,
+    "brand": "Jumbo Green Pepper",
+    "base_name": "Jumbo Green Pepper",
+    "created_at": "2024-12-27 18:31:33.737+00",
+    "updated_at": "2024-12-27 18:31:33.737+00",
+    "normalized_brand": "jumbo green pepper",
+    "normalized_base_name": "jumbo green pepper"
+  },
+  {
+    "id": 3943,
+    "brand": "Tropicana Light Orange Juice Beverage",
+    "base_name": "No Pulp, 46 fl oz Bottle",
+    "created_at": "2024-12-27 18:31:33.768+00",
+    "updated_at": "2024-12-27 18:31:33.768+00",
+    "normalized_brand": "tropicana light orange juice beverage",
+    "normalized_base_name": "no pulp 46 fl oz bottle"
+  },
+  {
+    "id": 3944,
+    "brand": "Kraft Mexican Style Four Cheese Blend Shredded Cheese",
+    "base_name": "Kraft Mexican Style Four Cheese Blend Shredded Cheese",
+    "created_at": "2024-12-27 18:31:33.91+00",
+    "updated_at": "2024-12-27 18:31:33.91+00",
+    "normalized_brand": "kraft mexican style four cheese blend shredded cheese",
+    "normalized_base_name": "kraft mexican style four cheese blend shredded cheese"
+  },
+  {
+    "id": 3945,
+    "brand": "Oreo Cookie Sticks 'N Creme Dip",
+    "base_name": "Handi-Snacks, 20 Packs",
+    "created_at": "2024-12-27 18:31:33.983+00",
+    "updated_at": "2024-12-27 18:31:33.983+00",
+    "normalized_brand": "oreo cookie sticks n creme dip",
+    "normalized_base_name": "handi-snacks 20 packs"
+  },
+  {
+    "id": 3946,
+    "brand": "Minute Maid Berry Punch Flavored Fruit Juice",
+    "base_name": "Minute Maid Berry Punch Flavored Fruit Juice",
+    "created_at": "2024-12-27 18:31:33.972+00",
+    "updated_at": "2024-12-27 18:31:33.972+00",
+    "normalized_brand": "minute maid berry punch flavored fruit juice",
+    "normalized_base_name": "minute maid berry punch flavored fruit juice"
+  },
+  {
+    "id": 3947,
+    "brand": "Doritos Tortilla Chips",
+    "base_name": "Nacho Cheese, Party Size",
+    "created_at": "2024-12-27 18:31:33.985+00",
+    "updated_at": "2024-12-27 18:31:33.985+00",
+    "normalized_brand": "doritos tortilla chips",
+    "normalized_base_name": "nacho cheese party size"
+  },
+  {
+    "id": 3948,
+    "brand": "Great Value Purified Drinking Water",
+    "base_name": "Great Value Purified Drinking Water",
+    "created_at": "2024-12-27 18:31:33.985+00",
+    "updated_at": "2024-12-27 18:31:33.985+00",
+    "normalized_brand": "great value purified drinking water",
+    "normalized_base_name": "great value purified drinking water"
+  },
+  {
+    "id": 3949,
+    "brand": "Great Value Triple Cheddar Finely Shredded Vermont Cheddar",
+    "base_name": "Sharp Cheddar And Mild Cheddar Cheese",
+    "created_at": "2024-12-27 18:31:33.989+00",
+    "updated_at": "2024-12-27 18:31:33.989+00",
+    "normalized_brand": "great value triple cheddar finely shredded vermont cheddar",
+    "normalized_base_name": "sharp cheddar and mild cheddar cheese"
+  },
+  {
+    "id": 3950,
+    "brand": "Spinach",
+    "base_name": "Spinach",
+    "created_at": "2024-12-27 18:31:34.009+00",
+    "updated_at": "2024-12-27 18:31:34.009+00",
+    "normalized_brand": "spinach",
+    "normalized_base_name": "spinach"
+  },
+  {
+    "id": 3951,
+    "brand": "Smucker's Uncrustables Peanut Butter & Strawberry Jam Sandwich",
+    "base_name": "Smucker's Uncrustables Peanut Butter & Strawberry Jam Sandwich",
+    "created_at": "2024-12-27 18:31:34.015+00",
+    "updated_at": "2024-12-27 18:31:34.015+00",
+    "normalized_brand": "smuckers uncrustables peanut butter strawberry jam sandwich",
+    "normalized_base_name": "smuckers uncrustables peanut butter strawberry jam sandwich"
+  },
+  {
+    "id": 3952,
+    "brand": "Melissa's Baby Dutch Yellow Potatoes",
+    "base_name": "Melissa's Baby Dutch Yellow Potatoes",
+    "created_at": "2024-12-27 18:31:34.094+00",
+    "updated_at": "2024-12-27 18:31:34.094+00",
+    "normalized_brand": "melissas baby dutch yellow potatoes",
+    "normalized_base_name": "melissas baby dutch yellow potatoes"
+  },
+  {
+    "id": 3953,
+    "brand": "Great Value Fries",
+    "base_name": "Seasoned",
+    "created_at": "2024-12-27 18:31:34.125+00",
+    "updated_at": "2024-12-27 18:31:34.125+00",
+    "normalized_brand": "great value fries",
+    "normalized_base_name": "seasoned"
+  },
+  {
+    "id": 3954,
+    "brand": "Totino's Pizza Rolls Pepperoni Flavored Frozen Snacks",
+    "base_name": "Totino's Pizza Rolls Pepperoni Flavored Frozen Snacks",
+    "created_at": "2024-12-27 18:31:34.133+00",
+    "updated_at": "2024-12-27 18:31:34.133+00",
+    "normalized_brand": "totinos pizza rolls pepperoni flavored frozen snacks",
+    "normalized_base_name": "totinos pizza rolls pepperoni flavored frozen snacks"
+  },
+  {
+    "id": 3955,
+    "brand": "Great Value Seasoned Shredded Potatoes Taters",
+    "base_name": "Great Value Seasoned Shredded Potatoes Taters",
+    "created_at": "2024-12-27 18:31:34.132+00",
+    "updated_at": "2024-12-27 18:31:34.132+00",
+    "normalized_brand": "great value seasoned shredded potatoes taters",
+    "normalized_base_name": "great value seasoned shredded potatoes taters"
+  },
+  {
+    "id": 3956,
+    "brand": "GuruNanda Pulling Oil",
+    "base_name": "Natural, Coconut+Mint, Whitening",
+    "created_at": "2024-12-27 18:31:34.141+00",
+    "updated_at": "2024-12-27 18:31:34.141+00",
+    "normalized_brand": "gurunanda pulling oil",
+    "normalized_base_name": "natural coconutmint whitening"
+  },
+  {
+    "id": 3957,
+    "brand": "Lunchables Crispy Grilled Cheesies",
+    "base_name": "Original American Cheese Sandwich",
+    "created_at": "2024-12-27 18:31:34.159+00",
+    "updated_at": "2024-12-27 18:31:34.159+00",
+    "normalized_brand": "lunchables crispy grilled cheesies",
+    "normalized_base_name": "original american cheese sandwich"
+  },
+  {
+    "id": 3958,
+    "brand": "Great Value Peanut Butter Wafer Bars",
+    "base_name": "Great Value Peanut Butter Wafer Bars",
+    "created_at": "2024-12-27 18:31:34.141+00",
+    "updated_at": "2024-12-27 18:31:34.141+00",
+    "normalized_brand": "great value peanut butter wafer bars",
+    "normalized_base_name": "great value peanut butter wafer bars"
+  },
+  {
+    "id": 3959,
+    "brand": "Little Debbie Oatmeal Creme Pies",
+    "base_name": "Little Debbie Oatmeal Creme Pies",
+    "created_at": "2024-12-27 18:31:34.141+00",
+    "updated_at": "2024-12-27 18:31:34.141+00",
+    "normalized_brand": "little debbie oatmeal creme pies",
+    "normalized_base_name": "little debbie oatmeal creme pies"
+  },
+  {
+    "id": 3960,
+    "brand": "Banana",
+    "base_name": "Banana",
+    "created_at": "2024-12-27 18:31:34.14+00",
+    "updated_at": "2024-12-27 18:31:34.14+00",
+    "normalized_brand": "banana",
+    "normalized_base_name": "banana"
+  },
+  {
+    "id": 3961,
+    "brand": "Great Value Cheese",
+    "base_name": "Finely Shredded, Fiesta Blend",
+    "created_at": "2024-12-27 18:31:34.191+00",
+    "updated_at": "2024-12-27 18:31:34.191+00",
+    "normalized_brand": "great value cheese",
+    "normalized_base_name": "finely shredded fiesta blend"
+  },
+  {
+    "id": 3962,
+    "brand": "Little Debbie Honey Buns",
+    "base_name": "Little Debbie Honey Buns",
+    "created_at": "2024-12-27 18:31:34.236+00",
+    "updated_at": "2024-12-27 18:31:34.236+00",
+    "normalized_brand": "little debbie honey buns",
+    "normalized_base_name": "little debbie honey buns"
+  },
+  {
+    "id": 3963,
+    "brand": "Smucker's Uncrustables Peanut Butter & Grape Jelly Sandwich",
+    "base_name": "Smucker's Uncrustables Peanut Butter & Grape Jelly Sandwich",
+    "created_at": "2024-12-27 18:31:34.229+00",
+    "updated_at": "2024-12-27 18:31:34.229+00",
+    "normalized_brand": "smuckers uncrustables peanut butter grape jelly sandwich",
+    "normalized_base_name": "smuckers uncrustables peanut butter grape jelly sandwich"
+  },
+  {
+    "id": 3964,
+    "brand": "Sauve Moroccon Infusion Shine Shampoo",
+    "base_name": "Conditioner",
+    "created_at": "2024-12-27 18:31:34.36+00",
+    "updated_at": "2024-12-27 18:31:34.36+00",
+    "normalized_brand": "sauve moroccon infusion shine shampoo",
+    "normalized_base_name": "conditioner"
+  },
+  {
+    "id": 3965,
+    "brand": "Stemilt Hair Spray",
+    "base_name": "4x Mega Hold, Unscented",
+    "created_at": "2024-12-27 18:31:34.382+00",
+    "updated_at": "2024-12-27 18:31:34.382+00",
+    "normalized_brand": "stemilt hair spray",
+    "normalized_base_name": "4x mega hold unscented"
+  },
+  {
+    "id": 3966,
+    "brand": "Daiya Deliciously Dairy Free Cheddar Style Slices",
+    "base_name": "Daiya Deliciously Dairy Free Cheddar Style Slices",
+    "created_at": "2024-12-27 18:31:34.384+00",
+    "updated_at": "2024-12-27 18:31:34.384+00",
+    "normalized_brand": "daiya deliciously dairy free cheddar style slices",
+    "normalized_base_name": "daiya deliciously dairy free cheddar style slices"
+  },
+  {
+    "id": 3967,
+    "brand": "Nexxus Hair Spray",
+    "base_name": "For Control,",
+    "created_at": "2024-12-27 18:31:34.45+00",
+    "updated_at": "2024-12-27 18:31:34.45+00",
+    "normalized_brand": "nexxus hair spray",
+    "normalized_base_name": "for control"
+  },
+  {
+    "id": 3968,
+    "brand": "TRESemmé Hair Spray Extra Hold",
+    "base_name": "TRESemmé Hair Spray Extra Hold",
+    "created_at": "2024-12-27 18:31:34.454+00",
+    "updated_at": "2024-12-27 18:31:34.454+00",
+    "normalized_brand": "tresemm hair spray extra hold",
+    "normalized_base_name": "tresemm hair spray extra hold"
+  },
+  {
+    "id": 3969,
+    "brand": "Nexxus Hair Mousse",
+    "base_name": "Volume",
+    "created_at": "2024-12-27 18:31:34.462+00",
+    "updated_at": "2024-12-27 18:31:34.462+00",
+    "normalized_brand": "nexxus hair mousse",
+    "normalized_base_name": "volume"
+  }
+]

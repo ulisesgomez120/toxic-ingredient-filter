@@ -144,9 +144,11 @@ class DatabaseHandler {
       const normalizedBrand = normalizeProductName(productInfo.brand);
       const normalizedBaseName = normalizeProductName(productInfo.name);
 
-      // Search using only normalized base name
+      // Search using both normalized brand and base name
       const searchResponse = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_groups?normalized_base_name=eq.${encodeURIComponent(normalizedBaseName)}`,
+        `${this.supabaseUrl}/rest/v1/product_groups?normalized_brand=eq.${encodeURIComponent(
+          normalizedBrand
+        )}&normalized_base_name=eq.${encodeURIComponent(normalizedBaseName)}`,
         {
           headers: this.getHeaders(),
         }
@@ -154,14 +156,31 @@ class DatabaseHandler {
 
       const existingGroups = await this.handleResponse(searchResponse, "Failed to search for product group");
       if (existingGroups && existingGroups.length > 0) {
-        // Update the existing group with new brand if needed
-        const existingGroup = existingGroups[0];
+        return existingGroups[0];
+      }
+
+      // If not found by exact match, search by normalized_base_name only
+      const baseNameSearchResponse = await fetch(
+        `${this.supabaseUrl}/rest/v1/product_groups?normalized_base_name=eq.${encodeURIComponent(normalizedBaseName)}`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      const existingBaseNameGroups = await this.handleResponse(
+        baseNameSearchResponse,
+        "Failed to search for product group by base name"
+      );
+      if (existingBaseNameGroups && existingBaseNameGroups.length > 0) {
+        // Use the first existing group and update its brand if needed
+        const existingGroup = existingBaseNameGroups[0];
         if (existingGroup.brand !== productInfo.brand) {
           const updateResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups?id=eq.${existingGroup.id}`, {
             method: "PATCH",
             headers: this.getHeaders("return=representation"),
             body: JSON.stringify({
               brand: productInfo.brand,
+              normalized_brand: normalizedBrand,
               updated_at: new Date().toISOString(),
             }),
           });
