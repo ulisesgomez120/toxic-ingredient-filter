@@ -3,7 +3,7 @@
 class ProductCacheManager {
   constructor() {
     this.DB_NAME = "ToxicFoodFilter";
-    this.DB_VERSION = 1;
+    this.DB_VERSION = 2; // Increment version for schema changes
     this.CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week
     this.db = null;
     this.memoryCache = new Map();
@@ -30,23 +30,23 @@ class ProductCacheManager {
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
 
-        // Create product store
+        // Create product store with simplified structure
         if (!db.objectStoreNames.contains("products")) {
           const productStore = db.createObjectStore("products", { keyPath: "external_id" });
           productStore.createIndex("retailerId", "retailerId", { unique: false });
           productStore.createIndex("lastUpdated", "lastUpdated", { unique: false });
         }
 
-        // Create product groups store
+        // Create product groups store with simplified structure
         if (!db.objectStoreNames.contains("productGroups")) {
           const groupStore = db.createObjectStore("productGroups", { keyPath: "id" });
-          // Remove unique constraint on normalizedBaseName since we're grouping by ingredients
-          groupStore.createIndex("normalizedBaseName", "normalizedBaseName", { unique: false });
+          groupStore.createIndex("currentIngredientsId", "currentIngredientsId", { unique: false });
         }
 
-        // Create ingredients store with hash-based lookups
+        // Create ingredients store with updated structure
         if (!db.objectStoreNames.contains("ingredients")) {
-          const ingredientStore = db.createObjectStore("ingredients", { keyPath: "productGroupId" });
+          const ingredientStore = db.createObjectStore("ingredients", { keyPath: "id" });
+          ingredientStore.createIndex("productGroupId", "productGroupId", { unique: false });
           ingredientStore.createIndex("lastUpdated", "lastUpdated", { unique: false });
           ingredientStore.createIndex("ingredientsHash", "ingredientsHash", { unique: false });
           ingredientStore.createIndex("isCurrent", "isCurrent", { unique: false });
@@ -120,11 +120,22 @@ class ProductCacheManager {
       return false;
     }
   }
+
   async getProductWithIngredients(productGroupId) {
     try {
-      const tx = this.db.transaction("ingredients", "readonly");
-      const store = tx.objectStore("ingredients");
-      const ingredientData = await this.dbRequest(store.get(productGroupId));
+      // First get the product group to find current ingredients ID
+      const groupTx = this.db.transaction("productGroups", "readonly");
+      const groupStore = groupTx.objectStore("productGroups");
+      const group = await this.dbRequest(groupStore.get(productGroupId));
+
+      if (!group || !group.currentIngredientsId) {
+        return null;
+      }
+
+      // Then get the current ingredients
+      const ingredientsTx = this.db.transaction("ingredients", "readonly");
+      const ingredientsStore = ingredientsTx.objectStore("ingredients");
+      const ingredientData = await this.dbRequest(ingredientsStore.get(group.currentIngredientsId));
 
       if (ingredientData && this.isCacheValid(ingredientData.lastUpdated)) {
         return {
@@ -140,31 +151,34 @@ class ProductCacheManager {
 
   async saveIngredients(productGroupId, ingredients, toxinFlags = [], ingredientsHash = null) {
     try {
-      // Mark existing ingredients as not current
-      const tx = this.db.transaction("ingredients", "readwrite");
-      const store = tx.objectStore("ingredients");
-      const index = store.index("productGroupId");
-      const range = IDBKeyRange.only(productGroupId);
+      const tx = this.db.transaction(["ingredients", "productGroups"], "readwrite");
+      const ingredientsStore = tx.objectStore("ingredients");
+      const groupsStore = tx.objectStore("productGroups");
 
-      let cursor = await this.dbRequest(index.openCursor(range));
-      while (cursor) {
-        const updateData = { ...cursor.value, isCurrent: false };
-        await this.dbRequest(store.put(updateData));
-        cursor = await this.dbRequest(cursor.continue());
-      }
+      // Create new ingredients entry
+      const ingredientData = {
+        id: Date.now(), // Use timestamp as unique ID
+        productGroupId,
+        ingredients,
+        toxinFlags,
+        ingredientsHash,
+        isCurrent: true,
+        verificationCount: 1,
+        lastUpdated: Date.now(),
+      };
 
-      // Save new ingredients
+      // Save ingredients
+      await this.dbRequest(ingredientsStore.put(ingredientData));
+
+      // Update product group with new current ingredients ID
       await this.dbRequest(
-        store.put({
-          productGroupId,
-          ingredients,
-          toxinFlags,
-          ingredientsHash,
-          isCurrent: true,
-          verificationCount: 1,
+        groupsStore.put({
+          id: productGroupId,
+          currentIngredientsId: ingredientData.id,
           lastUpdated: Date.now(),
         })
       );
+
       return true;
     } catch (error) {
       console.error("Error saving ingredients:", error);
@@ -203,11 +217,11 @@ class ProductCacheManager {
     }
   }
 
-  async updateIngredientVerification(productGroupId) {
+  async updateIngredientVerification(ingredientsId) {
     try {
       const tx = this.db.transaction("ingredients", "readwrite");
       const store = tx.objectStore("ingredients");
-      const data = await this.dbRequest(store.get(productGroupId));
+      const data = await this.dbRequest(store.get(ingredientsId));
 
       if (data && data.isCurrent) {
         const updateData = {

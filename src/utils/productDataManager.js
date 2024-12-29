@@ -81,6 +81,7 @@ export class ProductDataManager {
       console.error("Error processing batch:", error);
     }
   }
+
   /**
    * Process a chunk of products
    */
@@ -100,11 +101,16 @@ export class ProductDataManager {
             if (analysis) {
               // Save to cache
               if (analysis.hasAnalysis) {
-                await this.cacheManager.saveProduct(
-                  productId,
-                  null, // ingredients not needed for list view
-                  analysis.toxinFlags
-                );
+                await this.cacheManager.saveProduct({
+                  external_id: productId,
+                  retailerId: productData.retailerId,
+                  url_path: productData.url_path,
+                  price_amount: productData.price_amount,
+                  price_unit: productData.price_unit,
+                  image_url: productData.image_url,
+                  toxin_flags: analysis.toxinFlags,
+                  has_analysis: analysis.hasAnalysis,
+                });
               }
 
               const enrichedProduct = {
@@ -132,31 +138,6 @@ export class ProductDataManager {
     } catch (error) {
       console.error("Error processing chunk:", error);
     }
-  }
-  formatProductData(productData) {
-    return {
-      brand: productData.brand || "",
-      baseName: productData.name,
-      name: productData.name,
-      retailerId: productData.retailerId,
-      externalId: productData.external_id,
-      urlPath: productData.url_path,
-      priceAmount: productData.priceAmount,
-      priceUnit: productData.priceUnit,
-      imageUrl: productData.image_url,
-      baseUnit: productData.baseUnit,
-      size: productData.size,
-    };
-  }
-  /**
-   * Handle product data once we have it
-   */
-  handleProductData(productId, productData) {
-    // Cache the data
-    this.cache.set(productId, productData);
-
-    // Execute all callbacks waiting for this product
-    this.executeCallbacks(productId, productData);
   }
 
   /**
