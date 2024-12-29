@@ -40,13 +40,16 @@ class ProductCacheManager {
         // Create product groups store
         if (!db.objectStoreNames.contains("productGroups")) {
           const groupStore = db.createObjectStore("productGroups", { keyPath: "id" });
-          groupStore.createIndex("normalizedBaseName", "normalizedBaseName", { unique: true });
+          // Remove unique constraint on normalizedBaseName since we're grouping by ingredients
+          groupStore.createIndex("normalizedBaseName", "normalizedBaseName", { unique: false });
         }
 
-        // Create ingredients store
+        // Create ingredients store with hash-based lookups
         if (!db.objectStoreNames.contains("ingredients")) {
           const ingredientStore = db.createObjectStore("ingredients", { keyPath: "productGroupId" });
           ingredientStore.createIndex("lastUpdated", "lastUpdated", { unique: false });
+          ingredientStore.createIndex("ingredientsHash", "ingredientsHash", { unique: false });
+          ingredientStore.createIndex("isCurrent", "isCurrent", { unique: false });
         }
       };
     });
@@ -135,21 +138,89 @@ class ProductCacheManager {
     return null;
   }
 
-  async saveIngredients(productGroupId, ingredients, toxinFlags = []) {
+  async saveIngredients(productGroupId, ingredients, toxinFlags = [], ingredientsHash = null) {
     try {
+      // Mark existing ingredients as not current
       const tx = this.db.transaction("ingredients", "readwrite");
       const store = tx.objectStore("ingredients");
+      const index = store.index("productGroupId");
+      const range = IDBKeyRange.only(productGroupId);
+
+      let cursor = await this.dbRequest(index.openCursor(range));
+      while (cursor) {
+        const updateData = { ...cursor.value, isCurrent: false };
+        await this.dbRequest(store.put(updateData));
+        cursor = await this.dbRequest(cursor.continue());
+      }
+
+      // Save new ingredients
       await this.dbRequest(
         store.put({
           productGroupId,
           ingredients,
-          toxinFlags, // Add toxinFlags to the stored data
+          toxinFlags,
+          ingredientsHash,
+          isCurrent: true,
+          verificationCount: 1,
           lastUpdated: Date.now(),
         })
       );
       return true;
     } catch (error) {
       console.error("Error saving ingredients:", error);
+      return false;
+    }
+  }
+
+  async findGroupByIngredientsHash(ingredientsHash) {
+    try {
+      const tx = this.db.transaction("ingredients", "readonly");
+      const store = tx.objectStore("ingredients");
+      const index = store.index("ingredientsHash");
+      const range = IDBKeyRange.only(ingredientsHash);
+
+      let cursor = await this.dbRequest(index.openCursor(range));
+      while (cursor) {
+        const ingredientData = cursor.value;
+        if (ingredientData.isCurrent && this.isCacheValid(ingredientData.lastUpdated)) {
+          // Get associated product group
+          const groupTx = this.db.transaction("productGroups", "readonly");
+          const groupStore = groupTx.objectStore("productGroups");
+          const group = await this.dbRequest(groupStore.get(ingredientData.productGroupId));
+          if (group) {
+            return {
+              group,
+              ingredients: ingredientData,
+            };
+          }
+        }
+        cursor = await this.dbRequest(cursor.continue());
+      }
+      return null;
+    } catch (error) {
+      console.error("Error finding group by ingredients hash:", error);
+      return null;
+    }
+  }
+
+  async updateIngredientVerification(productGroupId) {
+    try {
+      const tx = this.db.transaction("ingredients", "readwrite");
+      const store = tx.objectStore("ingredients");
+      const data = await this.dbRequest(store.get(productGroupId));
+
+      if (data && data.isCurrent) {
+        const updateData = {
+          ...data,
+          verificationCount: (data.verificationCount || 0) + 1,
+          lastUpdated: Date.now(),
+        };
+        await this.dbRequest(store.put(updateData));
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error updating ingredient verification:", error);
       return false;
     }
   }

@@ -379,7 +379,12 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
     const brand = name ? extractBrandFromName(name) : "";
     // Merge with list data if provided, otherwise return extracted data
     if (listData) {
-      console.log("listData:", listData);
+      console.log("listData:", {
+        ...listData,
+        name: name || listData.name, // Use modal name if list name is empty
+        ingredients,
+        brand: brand || listData.brand, // Use extracted brand or fallback to list data brand
+      });
       return {
         ...listData,
         name: name || listData.name, // Use modal name if list name is empty

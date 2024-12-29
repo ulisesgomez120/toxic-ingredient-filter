@@ -37,14 +37,37 @@ A Chrome extension that helps users make healthier food choices on Instacart by 
 1. Database Structure
 
    - Supabase PostgreSQL database
-   - Product groups for handling variants
+   - Ingredient-first product grouping:
+     - Products grouped by matching ingredients
+     - SHA-256 hash for ingredient matching
+     - Verification count tracking
+     - Historical ingredient tracking
    - Real-time data collection during browsing
    - Version tracking for ingredient changes
 
-2. Caching System
+2. Product Grouping Strategy
+
+   - Ingredient-based matching:
+     - Generate SHA-256 hash of normalized ingredients
+     - Find existing groups with matching ingredients
+     - Create new group only if no match found
+   - Local hash generation:
+     - Uses Web Crypto API for SHA-256
+     - Matches database's hash generation
+     - Eliminates need for RPC calls
+   - Ingredient verification:
+     - Tracks verification count for ingredients
+     - Maintains history of ingredient changes
+     - Marks current/historical ingredient versions
+
+3. Caching System
    - Two-level caching:
      - Memory cache for immediate access
      - IndexedDB for persistent storage
+   - Enhanced caching features:
+     - Ingredient hash caching
+     - Product group caching
+     - Verification count tracking
    - Batch processing of product data
    - Automatic cache cleanup
    - Background data prefetching
@@ -63,6 +86,7 @@ A Chrome extension that helps users make healthier food choices on Instacart by 
    - Ingredient result caching
    - Product group caching
    - Memory usage optimization
+   - Local hash generation
 
 ### Extension Components
 
@@ -78,11 +102,12 @@ A Chrome extension that helps users make healthier food choices on Instacart by 
    - API communication
    - Cache management
    - Database operations
+   - Hash generation
 
 3. Data Managers
    - ProductDataManager: Coordinates data operations
    - ProductCacheManager: Handles caching
-   - DatabaseHandler: Manages database operations
+   - DatabaseHandler: Manages database operations and ingredient grouping
    - OverlayManager: Controls badge and tooltip display
 
 ### User Interface
@@ -127,9 +152,11 @@ A Chrome extension that helps users make healthier food choices on Instacart by 
 2. Check cache for existing data
 3. Queue for batch processing if needed
 4. Process in configurable batch sizes
-5. Update cache with results
-6. Display badge with results
-7. Enable tooltip interaction
+5. Generate ingredient hash if needed
+6. Find or create product group
+7. Update cache with results
+8. Display badge with results
+9. Enable tooltip interaction
 
 ### Caching Strategy
 
@@ -138,12 +165,14 @@ A Chrome extension that helps users make healthier food choices on Instacart by 
    - Immediate access
    - Temporary storage
    - Frequently accessed data
+   - Ingredient hash caching
 
 2. IndexedDB Storage
    - Persistent data
    - Product information
    - Ingredient results
    - Product groups
+   - Verification counts
 
 ## Future Enhancements
 
@@ -152,12 +181,14 @@ A Chrome extension that helps users make healthier food choices on Instacart by 
    - WebWorker implementation for processing
    - Enhanced prefetching strategies
    - Further cache optimizations
+   - Parallel hash generation
 
 2. Data Management
 
    - Enhanced batch processing
    - Improved caching strategies
    - Better variant handling
+   - Ingredient normalization service
 
 ### Constraint: Ingredient Data Availability on Instacart
 

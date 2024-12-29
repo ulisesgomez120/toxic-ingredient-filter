@@ -99,7 +99,7 @@ export class OverlayManager {
       badge.className = "toxic-badge";
       badge.setAttribute("data-created", Date.now().toString());
 
-      // Get toxin flags or empty array
+      // Get toxin flags from product group ingredients (null if no ingredient data available)
       const toxinFlags = productData?.toxin_flags || null;
       const severityColor = this.getSeverityColor(toxinFlags);
       badge.style.backgroundColor = severityColor;

@@ -135,52 +135,27 @@ class DatabaseHandler {
     }
   }
 
-  async findOrCreateProductGroup(productInfo) {
+  async findOrCreateProductGroup(productInfo, ingredients) {
     try {
-      if (!productInfo.name || productInfo.name.trim() === "") {
-        throw new Error("Base name is required for product group");
+      if (!ingredients || ingredients.trim() === "") {
+        throw new Error("Ingredients are required for product grouping");
       }
 
-      const normalizedBrand = normalizeProductName(productInfo.brand);
-      const normalizedBaseName = normalizeProductName(productInfo.name);
+      // First try to find a group by ingredients hash
+      const ingredientsHash = await this.generateIngredientsHash(ingredients);
+      const existingGroup = await this.findGroupByIngredientsHash(ingredientsHash);
 
-      // Search using both normalized brand and base name
-      const searchResponse = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_groups?normalized_brand=eq.${encodeURIComponent(
-          normalizedBrand
-        )}&normalized_base_name=eq.${encodeURIComponent(normalizedBaseName)}`,
-        {
-          headers: this.getHeaders(),
-        }
-      );
-
-      const existingGroups = await this.handleResponse(searchResponse, "Failed to search for product group");
-      if (existingGroups && existingGroups.length > 0) {
-        return existingGroups[0];
-      }
-
-      // If not found by exact match, search by normalized_base_name only
-      const baseNameSearchResponse = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_groups?normalized_base_name=eq.${encodeURIComponent(normalizedBaseName)}`,
-        {
-          headers: this.getHeaders(),
-        }
-      );
-
-      const existingBaseNameGroups = await this.handleResponse(
-        baseNameSearchResponse,
-        "Failed to search for product group by base name"
-      );
-      if (existingBaseNameGroups && existingBaseNameGroups.length > 0) {
-        // Use the first existing group and update its brand if needed
-        const existingGroup = existingBaseNameGroups[0];
-        if (existingGroup.brand !== productInfo.brand) {
+      if (existingGroup) {
+        // Update brand/name if needed
+        if (existingGroup.brand !== productInfo.brand || existingGroup.base_name !== productInfo.name) {
           const updateResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups?id=eq.${existingGroup.id}`, {
             method: "PATCH",
             headers: this.getHeaders("return=representation"),
             body: JSON.stringify({
               brand: productInfo.brand,
-              normalized_brand: normalizedBrand,
+              base_name: productInfo.name,
+              normalized_brand: normalizeProductName(productInfo.brand),
+              normalized_base_name: normalizeProductName(productInfo.name),
               updated_at: new Date().toISOString(),
             }),
           });
@@ -190,24 +165,69 @@ class DatabaseHandler {
         return existingGroup;
       }
 
-      // If not found, create new product group
+      // If no matching ingredients found, create new group
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
         method: "POST",
         headers: this.getHeaders("return=representation"),
         body: JSON.stringify({
           brand: productInfo.brand,
           base_name: productInfo.name,
-          normalized_base_name: normalizedBaseName,
-          normalized_brand: normalizedBrand,
+          normalized_brand: normalizeProductName(productInfo.brand),
+          normalized_base_name: normalizeProductName(productInfo.name),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }),
       });
 
       const newGroup = await this.handleResponse(createResponse, "Failed to create product group");
-      return Array.isArray(newGroup) ? newGroup[0] : newGroup;
+      const group = Array.isArray(newGroup) ? newGroup[0] : newGroup;
+
+      // Save ingredients for new group
+      await this.saveIngredients(group.id, ingredients);
+
+      return group;
     } catch (error) {
       console.error("Error in findOrCreateProductGroup:", error);
+      throw error;
+    }
+  }
+
+  async generateIngredientsHash(ingredients) {
+    // Normalize ingredients string
+    const normalizedIngredients = ingredients
+      .toLowerCase()
+      .replace(/\s+/g, " ") // Normalize whitespace
+      .trim();
+
+    // Convert string to UTF-8 bytes
+    const encoder = new TextEncoder();
+    const data = encoder.encode(normalizedIngredients);
+
+    // Generate SHA-256 hash
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+
+    // Convert to hex string
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  async findGroupByIngredientsHash(ingredientsHash) {
+    try {
+      const response = await fetch(
+        `${this.supabaseUrl}/rest/v1/product_group_ingredients?ingredients_hash=eq.${ingredientsHash}&is_current=eq.true&select=product_group_id,product_groups(*)`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      const results = await this.handleResponse(response, "Failed to find group by ingredients hash");
+      if (results && results.length > 0 && results[0].product_groups) {
+        return results[0].product_groups;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error in findGroupByIngredientsHash:", error);
       throw error;
     }
   }
@@ -296,8 +316,9 @@ class DatabaseHandler {
 
       // Extract product info using normalized name
       const productInfo = extractProductInfo(productData.name);
-      // Step 1: Find or create product group
-      const productGroup = await this.findOrCreateProductGroup(productInfo);
+
+      // Step 1: Find or create product group based on ingredients
+      const productGroup = await this.findOrCreateProductGroup(productInfo, productData.ingredients);
 
       if (!productGroup) {
         throw new Error("Failed to create product group");
@@ -329,17 +350,6 @@ class DatabaseHandler {
 
       if (!listing) {
         throw new Error("Failed to create/update product listing");
-      }
-
-      // Step 4: Save ingredients if provided
-      if (productData.ingredients && productData.ingredients.trim() !== "") {
-        // Find toxic ingredients using OverlayManager
-        const toxinFlags = this.overlayManager.findToxicIngredients(productData.ingredients);
-        await this.saveIngredients(
-          productGroup.id,
-          productData.ingredients,
-          toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : []
-        );
       }
 
       return {
@@ -481,40 +491,61 @@ class DatabaseHandler {
     }
   }
 
-  async saveIngredients(productGroupId, ingredients, toxinFlags = []) {
+  async saveIngredients(productGroupId, ingredients) {
     try {
-      // First, mark existing ingredients as not current
-      const updateResponse = await fetch(
+      // First check if these exact ingredients already exist
+      const ingredientsHash = await this.generateIngredientsHash(ingredients);
+      const existingResponse = await fetch(
+        `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}&ingredients_hash=eq.${ingredientsHash}&is_current=eq.true`,
+        {
+          headers: this.getHeaders(),
+        }
+      );
+
+      const existing = await this.handleResponse(existingResponse, "Failed to check existing ingredients");
+
+      if (existing && existing.length > 0) {
+        // Update verification count
+        const updateResponse = await fetch(
+          `${this.supabaseUrl}/rest/v1/product_group_ingredients?id=eq.${existing[0].id}`,
+          {
+            method: "PATCH",
+            headers: this.getHeaders("return=representation"),
+            body: JSON.stringify({
+              verification_count: existing[0].verification_count + 1,
+              found_at: new Date().toISOString(),
+            }),
+          }
+        );
+        return await this.handleResponse(updateResponse, "Failed to update ingredients verification");
+      }
+
+      // Mark existing ingredients as not current
+      await fetch(
         `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}&is_current=eq.true`,
         {
           method: "PATCH",
-          headers: this.getHeaders("return=representation"),
+          headers: this.getHeaders(),
           body: JSON.stringify({ is_current: false }),
         }
       );
 
-      await this.handleResponse(updateResponse, "Failed to update existing ingredients");
+      // Find toxic ingredients
+      const toxinFlags = this.overlayManager.findToxicIngredients(ingredients);
 
-      // Prepare the data to insert
-      const insertData = {
-        product_group_id: productGroupId,
-        ingredients,
-        is_current: true,
-        verification_count: 1,
-        found_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-      };
-
-      // Add toxin flags if provided
-      if (toxinFlags) {
-        insertData.toxin_flags = toxinFlags;
-      }
-
-      // Then insert new ingredients
+      // Insert new ingredients
       const insertResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients`, {
         method: "POST",
         headers: this.getHeaders("return=representation"),
-        body: JSON.stringify(insertData),
+        body: JSON.stringify({
+          product_group_id: productGroupId,
+          ingredients,
+          is_current: true,
+          verification_count: 1,
+          found_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          toxin_flags: toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : [],
+        }),
       });
 
       return await this.handleResponse(insertResponse, "Failed to save ingredients");
