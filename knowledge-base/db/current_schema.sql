@@ -280,6 +280,57 @@ $$;
 ALTER FUNCTION "public"."normalize_text"("input_text" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION public.find_or_create_product_group(
+  p_ingredients text,
+  p_ingredients_hash text,
+  p_toxin_flags jsonb DEFAULT NULL
+) RETURNS TABLE (
+  product_group_id integer,
+  ingredients_id integer
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_existing record;
+  v_group_id integer;
+  v_ingredients_id integer;
+BEGIN
+  -- First try to find existing group by ingredients hash
+  SELECT pgi.product_group_id, pgi.id INTO v_existing
+  FROM product_group_ingredients pgi
+  WHERE pgi.ingredients_hash = p_ingredients_hash 
+  AND pgi.is_current = true;
+  
+  IF FOUND THEN
+    -- Update verification count
+    UPDATE product_group_ingredients
+    SET verification_count = verification_count + 1,
+        found_at = NOW()
+    WHERE id = v_existing.id;
+    
+    RETURN QUERY SELECT v_existing.product_group_id, v_existing.id;
+    RETURN;
+  END IF;
+
+  -- If not found, create new group and ingredients atomically
+  INSERT INTO product_groups DEFAULT VALUES
+  RETURNING id INTO v_group_id;
+
+  -- Create ingredients entry
+  INSERT INTO product_group_ingredients 
+    (product_group_id, ingredients, ingredients_hash, is_current, verification_count, toxin_flags, found_at, created_at)
+  VALUES 
+    (v_group_id, p_ingredients, p_ingredients_hash, true, 1, p_toxin_flags, NOW(), NOW())
+  RETURNING id INTO v_ingredients_id;
+
+  -- Update product group with current ingredients
+  UPDATE product_groups 
+  SET current_ingredients_id = v_ingredients_id,
+      updated_at = NOW()
+  WHERE id = v_group_id;
+
+  RETURN QUERY SELECT v_group_id, v_ingredients_id;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION "public"."update_current_ingredients"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     AS $$
@@ -734,9 +785,8 @@ CREATE INDEX "idx_product_group_ingredients_current" ON "public"."product_group_
 
 
 
-CREATE INDEX "idx_product_group_ingredients_hash" ON "public"."product_group_ingredients" USING "btree" ("ingredients_hash") WHERE ("is_current" = true);
-
-
+CREATE UNIQUE INDEX "idx_product_group_ingredients_unique_hash" ON "public"."product_group_ingredients" 
+USING "btree" ("ingredients_hash") WHERE ("is_current" = true);
 
 CREATE INDEX "idx_product_group_ingredients_toxin_flags" ON "public"."product_group_ingredients" USING "gin" ("toxin_flags");
 

@@ -98,7 +98,8 @@ export class ProductDataManager {
           try {
             const productInfo = productIngredients[productData.external_id];
 
-            if (productInfo) {
+            // Only process if we have valid data (not null)
+            if (productInfo && (productInfo.ingredients || productInfo.toxin_flags)) {
               // Save to cache
               await this.cacheManager.saveProduct({
                 external_id: productId,

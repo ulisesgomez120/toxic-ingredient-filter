@@ -128,33 +128,69 @@ class DatabaseHandler {
   async findOrCreateProductGroup(ingredients) {
     try {
       if (!ingredients || ingredients.trim() === "") {
-        // throw new Error("Ingredients are required for product grouping");
-        return;
+        throw new Error("Ingredients are required for product grouping");
       }
 
-      // First try to find a group by ingredients hash
+      // Generate hash first since we'll need it in both paths
       const ingredientsHash = await this.generateIngredientsHash(ingredients);
-      const existingGroup = await this.findGroupByIngredientsHash(ingredientsHash);
 
+      // First try to find existing group by ingredients hash
+      const existingGroup = await this.findGroupByIngredientsHash(ingredientsHash);
       if (existingGroup) {
         return existingGroup;
       }
 
-      // If no matching ingredients found, create new group
-      const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
+      // Find toxic ingredients
+      const toxinFlags = this.overlayManager.findToxicIngredients(ingredients);
+
+      // Create new ingredients entry first
+      const createIngredientsResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients`, {
         method: "POST",
         headers: this.getHeaders("return=representation"),
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          ingredients,
+          is_current: true,
+          verification_count: 1,
+          found_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          toxin_flags: toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : [],
+        }),
       });
 
-      const newGroup = await this.handleResponse(createResponse, "Failed to create product group");
+      const newIngredients = await this.handleResponse(createIngredientsResponse, "Failed to create ingredients");
+      const ingredients_id = Array.isArray(newIngredients) ? newIngredients[0].id : newIngredients.id;
+
+      // Now create product group with reference to ingredients
+      const createGroupResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
+        method: "POST",
+        headers: this.getHeaders("return=representation"),
+        body: JSON.stringify({
+          current_ingredients_id: ingredients_id,
+        }),
+      });
+
+      const newGroup = await this.handleResponse(createGroupResponse, "Failed to create product group");
       const group = Array.isArray(newGroup) ? newGroup[0] : newGroup;
 
-      // Save ingredients for new group
-      await this.saveIngredients(group.id, ingredients);
+      // Update ingredients with group id
+      await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients?id=eq.${ingredients_id}`, {
+        method: "PATCH",
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          product_group_id: group.id,
+        }),
+      });
 
       return group;
     } catch (error) {
+      if (error.message && error.message.includes("duplicate key value violates unique constraint")) {
+        // If we hit a unique constraint, someone else created this group first
+        // Try to find their group
+        const conflictGroup = await this.findGroupByIngredientsHash(ingredientsHash);
+        if (conflictGroup) {
+          return conflictGroup;
+        }
+      }
       console.error("Error in findOrCreateProductGroup:", error);
       throw error;
     }
@@ -309,70 +345,6 @@ class DatabaseHandler {
       return Array.isArray(newListing) ? newListing[0] : newListing;
     } catch (error) {
       console.error("Error in upsertProductListing:", error);
-      throw error;
-    }
-  }
-
-  async saveIngredients(productGroupId, ingredients) {
-    try {
-      // First check if these exact ingredients already exist
-      const ingredientsHash = await this.generateIngredientsHash(ingredients);
-      const existingResponse = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}&ingredients_hash=eq.${ingredientsHash}&is_current=eq.true`,
-        {
-          headers: this.getHeaders(),
-        }
-      );
-
-      const existing = await this.handleResponse(existingResponse, "Failed to check existing ingredients");
-
-      if (existing && existing.length > 0) {
-        // Update verification count
-        const updateResponse = await fetch(
-          `${this.supabaseUrl}/rest/v1/product_group_ingredients?id=eq.${existing[0].id}`,
-          {
-            method: "PATCH",
-            headers: this.getHeaders("return=representation"),
-            body: JSON.stringify({
-              verification_count: existing[0].verification_count + 1,
-              found_at: new Date().toISOString(),
-            }),
-          }
-        );
-        return await this.handleResponse(updateResponse, "Failed to update ingredients verification");
-      }
-
-      // Mark existing ingredients as not current
-      await fetch(
-        `${this.supabaseUrl}/rest/v1/product_group_ingredients?product_group_id=eq.${productGroupId}&is_current=eq.true`,
-        {
-          method: "PATCH",
-          headers: this.getHeaders(),
-          body: JSON.stringify({ is_current: false }),
-        }
-      );
-
-      // Find toxic ingredients
-      const toxinFlags = this.overlayManager.findToxicIngredients(ingredients);
-
-      // Insert new ingredients
-      const insertResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients`, {
-        method: "POST",
-        headers: this.getHeaders("return=representation"),
-        body: JSON.stringify({
-          product_group_id: productGroupId,
-          ingredients,
-          is_current: true,
-          verification_count: 1,
-          found_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          toxin_flags: toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : [],
-        }),
-      });
-
-      return await this.handleResponse(insertResponse, "Failed to save ingredients");
-    } catch (error) {
-      console.error("Error in saveIngredients:", error);
       throw error;
     }
   }

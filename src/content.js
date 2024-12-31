@@ -271,14 +271,7 @@ class ProductScanner {
         await overlayPromise;
       }
 
-      if (this.dbHandler) {
-        try {
-          const formattedData = this.formatProductData(rawProductData);
-          await this.dbHandler.saveProductListing(formattedData);
-        } catch (error) {
-          console.error("Error saving product to database:", error);
-        }
-      }
+      // Don't save list view products to database since we don't have ingredients yet
     } catch (error) {
       console.error("Error analyzing product:", error);
       // Remove from processed items if there was an error
