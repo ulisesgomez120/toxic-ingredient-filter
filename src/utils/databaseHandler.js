@@ -2,12 +2,12 @@
 
 import { OverlayManager } from "./overlayManager";
 
-// Validation function to check modal data completeness
-const validateModalData = (modalData, isModalView = false) => {
+// Validation function to check product data completeness
+const validateProductData = (productData, isModalView = false) => {
   const requiredFields = {
-    retailerId: "number",
-    externalId: "string",
-    urlPath: "string",
+    retailer_id: "number",
+    external_id: "string",
+    url_path: "string",
   };
 
   // Only require ingredients for modal view
@@ -16,9 +16,9 @@ const validateModalData = (modalData, isModalView = false) => {
   }
 
   const optionalFields = {
-    priceAmount: "number",
-    priceUnit: "string",
-    imageUrl: "string",
+    price_amount: "number",
+    price_unit: "string",
+    image_url: "string",
     ingredients: "string", // Optional for list view
   };
 
@@ -27,39 +27,39 @@ const validateModalData = (modalData, isModalView = false) => {
 
   // Check required fields
   for (const [field, type] of Object.entries(requiredFields)) {
-    if (!modalData[field]) {
+    if (!productData[field]) {
       validationErrors.push(`Missing required field: ${field}`);
       continue;
     }
 
-    if (typeof modalData[field] !== type) {
-      validationErrors.push(`Invalid type for ${field}: expected ${type}, got ${typeof modalData[field]}`);
+    if (typeof productData[field] !== type) {
+      validationErrors.push(`Invalid type for ${field}: expected ${type}, got ${typeof productData[field]}`);
       continue;
     }
 
     // Additional validation for empty strings
-    if (type === "string" && modalData[field].trim() === "") {
+    if (type === "string" && productData[field].trim() === "") {
       validationErrors.push(`Field ${field} cannot be empty`);
       continue;
     }
 
-    validatedData[field] = modalData[field];
+    validatedData[field] = productData[field];
   }
 
   // Check optional fields
   for (const [field, type] of Object.entries(optionalFields)) {
-    if (modalData[field] !== undefined) {
-      if (typeof modalData[field] !== type) {
-        validationErrors.push(`Invalid type for ${field}: expected ${type}, got ${typeof modalData[field]}`);
+    if (productData[field] !== undefined) {
+      if (typeof productData[field] !== type) {
+        validationErrors.push(`Invalid type for ${field}: expected ${type}, got ${typeof productData[field]}`);
         continue;
       }
-      validatedData[field] = modalData[field];
+      validatedData[field] = productData[field];
     }
   }
 
-  // Special validation for retailerId
-  if (validatedData.retailerId && (!Number.isInteger(validatedData.retailerId) || validatedData.retailerId <= 0)) {
-    validationErrors.push("retailerId must be a positive integer");
+  // Special validation for retailer_id
+  if (validatedData.retailer_id && (!Number.isInteger(validatedData.retailer_id) || validatedData.retailer_id <= 0)) {
+    validationErrors.push("retailer_id must be a positive integer");
   }
 
   // Parse ingredients if it's valid
@@ -91,20 +91,36 @@ class DatabaseHandler {
     }
   }
 
-  async findProductGroupByExternalId(externalId) {
+  async getCurrentProductIngredients(externalIds) {
     try {
-      // Use the current_product_ingredients view to get all info in one query
-      const response = await fetch(
-        `${this.supabaseUrl}/rest/v1/current_product_ingredients?external_id=eq.${encodeURIComponent(externalId)}`,
-        {
-          headers: this.getHeaders(),
-        }
-      );
+      if (!Array.isArray(externalIds) || externalIds.length === 0) {
+        throw new Error("External IDs must be provided as a non-empty array");
+      }
 
-      const results = await this.handleResponse(response, "Failed to find product");
-      return results && results.length > 0 ? results[0] : null;
+      // Build the query string for IN clause
+      const externalIdsQuery = externalIds.map((id) => `'${id}'`).join(",");
+
+      // Use the current_product_ingredients view
+      const url = `${this.supabaseUrl}/rest/v1/current_product_ingredients?external_id=in.(${externalIdsQuery})`;
+
+      const response = await fetch(url, {
+        headers: this.getHeaders(),
+      });
+
+      const results = await this.handleResponse(response, "Failed to fetch current product ingredients");
+
+      // Process and format the results
+      const productIngredients = {};
+      results.forEach((result) => {
+        productIngredients[result.external_id] = {
+          ingredients: result.ingredients || null,
+          toxin_flags: result.toxin_flags || null,
+        };
+      });
+
+      return productIngredients;
     } catch (error) {
-      console.error("Error in findProductGroupByExternalId:", error);
+      console.error("Error in getCurrentProductIngredients:", error);
       throw error;
     }
   }
@@ -112,7 +128,8 @@ class DatabaseHandler {
   async findOrCreateProductGroup(ingredients) {
     try {
       if (!ingredients || ingredients.trim() === "") {
-        throw new Error("Ingredients are required for product grouping");
+        // throw new Error("Ingredients are required for product grouping");
+        return;
       }
 
       // First try to find a group by ingredients hash
@@ -127,9 +144,7 @@ class DatabaseHandler {
       const createResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
         method: "POST",
         headers: this.getHeaders("return=representation"),
-        body: JSON.stringify({
-          created_at: new Date().toISOString(),
-        }),
+        body: JSON.stringify({}),
       });
 
       const newGroup = await this.handleResponse(createResponse, "Failed to create product group");
@@ -147,10 +162,7 @@ class DatabaseHandler {
 
   async generateIngredientsHash(ingredients) {
     // Normalize ingredients string
-    const normalizedIngredients = ingredients
-      .toLowerCase()
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .trim();
+    const normalizedIngredients = ingredients.toLowerCase().replace(/\s+/g, " ").trim();
 
     // Convert string to UTF-8 bytes
     const encoder = new TextEncoder();
@@ -191,7 +203,7 @@ class DatabaseHandler {
   async saveProductListing(productData) {
     try {
       const isModalView = productData.ingredients !== undefined && productData.ingredients.trim() !== "";
-      const validation = validateModalData(productData, isModalView);
+      const validation = validateProductData(productData, isModalView);
 
       if (!validation.isValid) {
         throw new Error(`Invalid product data: ${validation.errors.join(", ")}`);
@@ -206,13 +218,13 @@ class DatabaseHandler {
 
       // Step 2: Create/update product listing
       const listing = await this.upsertProductListing({
-        productGroupId: productGroup.id,
-        retailerId: productData.retailerId,
-        externalId: productData.externalId,
-        urlPath: productData.urlPath,
-        priceAmount: productData.priceAmount,
-        priceUnit: productData.priceUnit,
-        imageUrl: productData.imageUrl,
+        product_group_id: productGroup.id,
+        retailer_id: productData.retailer_id,
+        external_id: productData.external_id,
+        url_path: productData.url_path,
+        price_amount: productData.price_amount,
+        price_unit: productData.price_unit,
+        image_url: productData.image_url,
       });
 
       if (!listing) {
@@ -221,8 +233,8 @@ class DatabaseHandler {
 
       return {
         success: true,
-        productGroupId: productGroup.id,
-        listingId: listing.id,
+        product_group_id: productGroup.id,
+        listing_id: listing.id,
       };
     } catch (error) {
       console.error("Error saving product data:", error);
@@ -230,12 +242,20 @@ class DatabaseHandler {
     }
   }
 
-  async upsertProductListing({ productGroupId, retailerId, externalId, urlPath, priceAmount, priceUnit, imageUrl }) {
+  async upsertProductListing({
+    product_group_id,
+    retailer_id,
+    external_id,
+    url_path,
+    price_amount,
+    price_unit,
+    image_url,
+  }) {
     try {
       // First, try to find existing listing
       const searchResponse = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_listings?retailer_id=eq.${retailerId}&external_id=eq.${encodeURIComponent(
-          externalId
+        `${this.supabaseUrl}/rest/v1/product_listings?retailer_id=eq.${retailer_id}&external_id=eq.${encodeURIComponent(
+          external_id
         )}`,
         {
           headers: this.getHeaders(),
@@ -252,11 +272,11 @@ class DatabaseHandler {
             method: "PATCH",
             headers: this.getHeaders("return=representation"),
             body: JSON.stringify({
-              product_group_id: productGroupId,
-              url_path: urlPath,
-              price_amount: priceAmount,
-              price_unit: priceUnit,
-              image_url: imageUrl,
+              product_group_id,
+              url_path,
+              price_amount,
+              price_unit,
+              image_url,
               last_seen_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             }),
@@ -272,13 +292,13 @@ class DatabaseHandler {
         method: "POST",
         headers: this.getHeaders("return=representation"),
         body: JSON.stringify({
-          product_group_id: productGroupId,
-          retailer_id: retailerId,
-          external_id: externalId,
-          url_path: urlPath,
-          price_amount: priceAmount,
-          price_unit: priceUnit,
-          image_url: imageUrl,
+          product_group_id,
+          retailer_id,
+          external_id,
+          url_path,
+          price_amount,
+          price_unit,
+          image_url,
           last_seen_at: new Date().toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -353,40 +373,6 @@ class DatabaseHandler {
       return await this.handleResponse(insertResponse, "Failed to save ingredients");
     } catch (error) {
       console.error("Error in saveIngredients:", error);
-      throw error;
-    }
-  }
-
-  async getToxinAnalysisByExternalIds(externalIds) {
-    try {
-      if (!Array.isArray(externalIds) || externalIds.length === 0) {
-        throw new Error("External IDs must be provided as a non-empty array");
-      }
-
-      // Build the query string for IN clause
-      const externalIdsQuery = externalIds.map((id) => `'${id}'`).join(",");
-
-      // Use the current_product_ingredients view
-      const url = `${this.supabaseUrl}/rest/v1/current_product_ingredients?external_id=in.(${externalIdsQuery})`;
-
-      const response = await fetch(url, {
-        headers: this.getHeaders(),
-      });
-
-      const results = await this.handleResponse(response, "Failed to fetch toxin analysis");
-
-      // Process and format the results
-      const analysis = {};
-      results.forEach((result) => {
-        analysis[result.external_id] = {
-          toxinFlags: result.toxin_flags || null,
-          hasAnalysis: !!result.ingredients,
-        };
-      });
-
-      return analysis;
-    } catch (error) {
-      console.error("Error in getToxinAnalysisByExternalIds:", error);
       throw error;
     }
   }

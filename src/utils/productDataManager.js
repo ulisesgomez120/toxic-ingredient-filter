@@ -90,33 +90,33 @@ export class ProductDataManager {
       // Get all external IDs from the chunk
       const externalIds = chunk.map(({ productData }) => productData.external_id);
 
-      // Get toxin analysis for all products in chunk at once
-      const toxinAnalysis = await this.dbHandler.getToxinAnalysisByExternalIds(externalIds);
+      // Get current ingredients and toxin analysis for all products in chunk
+      const productIngredients = await this.dbHandler.getCurrentProductIngredients(externalIds);
 
       const results = await Promise.all(
         chunk.map(async ({ productId, productData }) => {
           try {
-            const analysis = toxinAnalysis[productData.external_id];
+            const productInfo = productIngredients[productData.external_id];
 
-            if (analysis) {
+            if (productInfo) {
               // Save to cache
-              if (analysis.hasAnalysis) {
-                await this.cacheManager.saveProduct({
-                  external_id: productId,
-                  retailerId: productData.retailerId,
-                  url_path: productData.url_path,
-                  price_amount: productData.price_amount,
-                  price_unit: productData.price_unit,
-                  image_url: productData.image_url,
-                  toxin_flags: analysis.toxinFlags,
-                  has_analysis: analysis.hasAnalysis,
-                });
-              }
+              await this.cacheManager.saveProduct({
+                external_id: productId,
+                retailer_id: productData.retailer_id,
+                url_path: productData.url_path,
+                price_amount: productData.price_amount,
+                price_unit: productData.price_unit,
+                image_url: productData.image_url,
+                ingredients: productInfo.ingredients,
+                toxin_flags: productInfo.toxin_flags,
+                has_analysis: !!productInfo.toxin_flags,
+              });
 
               const enrichedProduct = {
                 ...productData,
-                toxin_flags: analysis.toxinFlags,
-                has_analysis: analysis.hasAnalysis,
+                ingredients: productInfo.ingredients,
+                toxin_flags: productInfo.toxin_flags,
+                has_analysis: !!productInfo.toxin_flags,
               };
 
               return enrichedProduct;

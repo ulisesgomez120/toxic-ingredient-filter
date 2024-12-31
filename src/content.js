@@ -319,9 +319,11 @@ class ProductScanner {
           this.overlayManager.createOverlay(img, { toxin_flags: null });
           return;
         }
-
+        console.log("Modal data:", rawModalData);
+        console.log(this.dbHandler ? "Database handler available" : "No database handler");
         if (this.dbHandler && rawModalData.ingredients) {
           try {
+            console.log("Saving modal data to database:", rawModalData);
             const formattedData = this.formatProductData(rawModalData);
             await this.dbHandler.saveProductListing(formattedData);
 
@@ -460,15 +462,12 @@ class ProductScanner {
 
   formatProductData(rawData) {
     return {
-      name: rawData.name,
-      retailerId: rawData.retailerId,
-      externalId: rawData.external_id,
-      urlPath: rawData.url_path,
-      priceAmount: rawData.price_amount ?? 0,
-      priceUnit: rawData.price_unit,
-      imageUrl: rawData.image_url,
-      baseUnit: rawData.base_unit,
-      size: rawData.size,
+      retailer_id: rawData.retailer_id,
+      external_id: rawData.external_id,
+      url_path: rawData.url_path,
+      price_amount: rawData.price_amount ?? 0,
+      price_unit: rawData.price_unit,
+      image_url: rawData.image_url,
       ingredients: rawData.ingredients,
     };
   }
