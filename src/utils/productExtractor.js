@@ -173,8 +173,6 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
       ingredients = getIngredients(sourceContent);
     }
 
-    console.log("1st", sourceContent, sourceType, listData);
-    console.log("2nd", external_id, url_path, ingredients);
     // Return minimal data needed for product group and ingredients
     return {
       external_id,

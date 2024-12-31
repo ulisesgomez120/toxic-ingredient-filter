@@ -319,11 +319,9 @@ class ProductScanner {
           this.overlayManager.createOverlay(img, { toxin_flags: null });
           return;
         }
-        console.log("Modal data:", rawModalData);
-        console.log(this.dbHandler ? "Database handler available" : "No database handler");
+
         if (this.dbHandler && rawModalData.ingredients) {
           try {
-            console.log("Saving modal data to database:", rawModalData);
             const formattedData = this.formatProductData(rawModalData);
             await this.dbHandler.saveProductListing(formattedData);
 
