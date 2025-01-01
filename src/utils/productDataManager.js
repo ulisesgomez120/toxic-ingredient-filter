@@ -89,18 +89,26 @@ export class ProductDataManager {
     try {
       // Get all external IDs from the chunk
       const externalIds = chunk.map(({ productData }) => productData.external_id);
-
+      console.log("Processing chunk:", externalIds);
       // Get current ingredients and toxin analysis for all products in chunk
       const productIngredients = await this.dbHandler.getCurrentProductIngredients(externalIds);
 
       const results = await Promise.all(
         chunk.map(async ({ productId, productData }) => {
           try {
+            // Get any existing product info from database
             const productInfo = productIngredients[productData.external_id];
 
-            // Only process if we have valid data (not null)
-            if (productInfo && (productInfo.ingredients || productInfo.toxin_flags)) {
-              // Save to cache
+            // Create enriched product with existing data or null values
+            const enrichedProduct = {
+              ...productData,
+              ingredients: productInfo?.ingredients || null,
+              toxin_flags: productInfo?.toxin_flags || null,
+              has_analysis: !!productInfo?.toxin_flags,
+            };
+
+            // Only cache if we have ingredients (for saving new products)
+            if (productInfo?.ingredients) {
               await this.cacheManager.saveProduct({
                 external_id: productId,
                 retailer_id: productData.retailer_id,
@@ -112,17 +120,9 @@ export class ProductDataManager {
                 toxin_flags: productInfo.toxin_flags,
                 has_analysis: !!productInfo.toxin_flags,
               });
-
-              const enrichedProduct = {
-                ...productData,
-                ingredients: productInfo.ingredients,
-                toxin_flags: productInfo.toxin_flags,
-                has_analysis: !!productInfo.toxin_flags,
-              };
-
-              return enrichedProduct;
             }
-            return null;
+
+            return enrichedProduct;
           } catch (error) {
             console.error("Error processing product:", error);
             return null;

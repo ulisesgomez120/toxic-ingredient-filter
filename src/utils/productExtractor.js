@@ -102,13 +102,24 @@ function getModalExternalId(modalContent) {
   // Try to get ID from URL first since it's most reliable
   const urlMatch = window.location.href.match(/\/(\d+)(?:\?|$)/);
   if (urlMatch) {
-    return `items_${urlMatch[1]}`;
+    // Look for prefix in the page content first
+    const prefixMatch = modalContent.innerHTML.match(/items_(\d+)-\d+/);
+    if (prefixMatch) {
+      return `items_${prefixMatch[1]}-${urlMatch[1]}`;
+    }
+    return `items_${urlMatch[1]}`; // Fallback to simple format
   }
 
   // Try to get from ingredients section ID
   const ingredientsSection = modalContent.querySelector('div[id$="-Ingredients"]');
   if (ingredientsSection) {
     const sectionId = ingredientsSection.id;
+    // Try to match full format first
+    const fullMatch = sectionId.match(/items_(\d+)-(\d+)-Ingredients$/);
+    if (fullMatch) {
+      return `items_${fullMatch[1]}-${fullMatch[2]}`;
+    }
+    // Fallback to simple format
     const match = sectionId.match(/(\d+)-Ingredients$/);
     if (match) {
       return `items_${match[1]}`;
@@ -119,12 +130,23 @@ function getModalExternalId(modalContent) {
   const detailsElement = modalContent.querySelector('[data-testid^="item_details_"]');
   if (detailsElement) {
     const testId = detailsElement.getAttribute("data-testid");
+    // Try to match full format first
+    const fullMatch = testId.match(/item_details_(items_\d+-\d+)/);
+    if (fullMatch) {
+      return fullMatch[1];
+    }
+    // Fallback to simple format
     return testId.replace("item_details_", "");
   }
 
   // Try to find any element with an ID containing "items_"
   const elementWithItemsId = modalContent.querySelector('[id*="items_"]');
   if (elementWithItemsId) {
+    // Try to match full format first
+    const fullMatch = elementWithItemsId.id.match(/(items_\d+-\d+)/);
+    if (fullMatch) {
+      return fullMatch[1];
+    }
     return elementWithItemsId.id;
   }
 
@@ -163,12 +185,18 @@ async function extractProductFromSource(sourceContent, sourceType = "modal", lis
 
     let external_id, url_path, ingredients;
 
-    if (sourceType === "modal") {
+    // If we have listData, use its external_id to maintain consistency
+    if (listData && listData.external_id) {
+      external_id = listData.external_id;
+    } else {
+      // Otherwise get ID from modal/page and try to match format
       external_id = getModalExternalId(sourceContent);
+    }
+
+    if (sourceType === "modal") {
       url_path = getModalUrlPath();
       ingredients = getIngredients(sourceContent);
     } else if (sourceType === "product_page") {
-      external_id = getModalExternalId(sourceContent); // Reuse modal function as logic is similar
       url_path = getModalUrlPath();
       ingredients = getIngredients(sourceContent);
     }
