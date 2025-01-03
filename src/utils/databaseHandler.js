@@ -131,69 +131,67 @@ class DatabaseHandler {
   }
 
   async findOrCreateProductGroup(ingredients) {
+    let ingredientsHash;
     try {
       if (!ingredients || ingredients.trim() === "") {
         throw new Error("Ingredients are required for product grouping");
       }
 
-      // Generate hash first since we'll need it in both paths
-      const ingredientsHash = await this.generateIngredientsHash(ingredients);
+      // Generate hash for searching
+      ingredientsHash = await this.generateIngredientsHash(ingredients);
 
       // First try to find existing group by ingredients hash
       const existingGroup = await this.findGroupByIngredientsHash(ingredientsHash);
+      console.log("existingGroup", existingGroup);
       if (existingGroup) {
+        // Update verification count for existing group
+        await fetch(
+          `${this.supabaseUrl}/rest/v1/product_group_ingredients?id=eq.${existingGroup.current_ingredients_id}`,
+          {
+            method: "PATCH",
+            headers: this.getHeaders(),
+            body: JSON.stringify({
+              verification_count: existingGroup.verification_count + 1,
+              found_at: new Date().toISOString(),
+            }),
+          }
+        );
         return existingGroup;
       }
 
       // Find toxic ingredients
       const toxinFlags = this.overlayManager.findToxicIngredients(ingredients);
 
-      // Create new ingredients entry first
-      const createIngredientsResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients`, {
+      // Try to create new group with ingredients atomically
+      // Note: We don't pass the hash - let the database generate it
+      const rpcResponse = await fetch(`${this.supabaseUrl}/rest/v1/rpc/find_or_create_product_group`, {
         method: "POST",
-        headers: this.getHeaders("return=representation"),
-        body: JSON.stringify({
-          ingredients,
-          is_current: true,
-          verification_count: 1,
-          found_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-          toxin_flags: toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : [],
-        }),
-      });
-
-      const newIngredients = await this.handleResponse(createIngredientsResponse, "Failed to create ingredients");
-      const ingredients_id = Array.isArray(newIngredients) ? newIngredients[0].id : newIngredients.id;
-
-      // Now create product group with reference to ingredients
-      const createGroupResponse = await fetch(`${this.supabaseUrl}/rest/v1/product_groups`, {
-        method: "POST",
-        headers: this.getHeaders("return=representation"),
-        body: JSON.stringify({
-          current_ingredients_id: ingredients_id,
-        }),
-      });
-
-      const newGroup = await this.handleResponse(createGroupResponse, "Failed to create product group");
-      const group = Array.isArray(newGroup) ? newGroup[0] : newGroup;
-
-      // Update ingredients with group id
-      await fetch(`${this.supabaseUrl}/rest/v1/product_group_ingredients?id=eq.${ingredients_id}`, {
-        method: "PATCH",
         headers: this.getHeaders(),
         body: JSON.stringify({
-          product_group_id: group.id,
+          p_ingredients: ingredients,
+          p_toxin_flags: toxinFlags === null ? null : toxinFlags.length > 0 ? toxinFlags : [],
         }),
       });
 
-      return group;
+      const results = await this.handleResponse(rpcResponse, "Failed to find or create product group");
+
+      // Handle array response from RPC
+      const result = Array.isArray(results) ? results[0] : results;
+
+      if (!result || !result.product_group_id) {
+        throw new Error("Failed to get product group ID from database");
+      }
+
+      return {
+        id: result.product_group_id,
+        current_ingredients_id: result.ingredients_id,
+      };
     } catch (error) {
+      // If we hit a unique constraint, try one more time to find the group
       if (error.message && error.message.includes("duplicate key value violates unique constraint")) {
-        // If we hit a unique constraint, someone else created this group first
-        // Try to find their group
-        const conflictGroup = await this.findGroupByIngredientsHash(ingredientsHash);
-        if (conflictGroup) {
-          return conflictGroup;
+        const retryGroup = await this.findGroupByIngredientsHash(ingredientsHash);
+        if (retryGroup) {
+          return retryGroup;
         }
       }
       console.error("Error in findOrCreateProductGroup:", error);
@@ -221,7 +219,7 @@ class DatabaseHandler {
   async findGroupByIngredientsHash(ingredientsHash) {
     try {
       const response = await fetch(
-        `${this.supabaseUrl}/rest/v1/product_group_ingredients?ingredients_hash=eq.${ingredientsHash}&is_current=eq.true&select=product_group_id,id`,
+        `${this.supabaseUrl}/rest/v1/product_group_ingredients?ingredients_hash=eq.${ingredientsHash}&is_current=eq.true&select=product_group_id,id,verification_count`,
         {
           headers: this.getHeaders(),
         }
@@ -232,6 +230,7 @@ class DatabaseHandler {
         return {
           id: results[0].product_group_id,
           current_ingredients_id: results[0].id,
+          verification_count: results[0].verification_count,
         };
       }
       return null;
@@ -251,9 +250,13 @@ class DatabaseHandler {
       }
 
       // Step 1: Find or create product group based on ingredients
+      if (!productData.ingredients) {
+        throw new Error("Ingredients are required for product grouping");
+      }
+
       const productGroup = await this.findOrCreateProductGroup(productData.ingredients);
 
-      if (!productGroup) {
+      if (!productGroup || !productGroup.id) {
         throw new Error("Failed to create product group");
       }
 

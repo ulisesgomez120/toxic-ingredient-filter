@@ -279,10 +279,8 @@ $$;
 
 ALTER FUNCTION "public"."normalize_text"("input_text" "text") OWNER TO "postgres";
 
-
 CREATE OR REPLACE FUNCTION public.find_or_create_product_group(
   p_ingredients text,
-  p_ingredients_hash text,
   p_toxin_flags jsonb DEFAULT NULL
 ) RETURNS TABLE (
   product_group_id integer,
@@ -294,9 +292,10 @@ DECLARE
   v_ingredients_id integer;
 BEGIN
   -- First try to find existing group by ingredients hash
+  -- The hash will be generated automatically by the database
   SELECT pgi.product_group_id, pgi.id INTO v_existing
   FROM product_group_ingredients pgi
-  WHERE pgi.ingredients_hash = p_ingredients_hash 
+  WHERE pgi.ingredients_hash = encode(sha256(p_ingredients::bytea), 'hex')
   AND pgi.is_current = true;
   
   IF FOUND THEN
@@ -315,10 +314,11 @@ BEGIN
   RETURNING id INTO v_group_id;
 
   -- Create ingredients entry
+  -- ingredients_hash will be generated automatically
   INSERT INTO product_group_ingredients 
-    (product_group_id, ingredients, ingredients_hash, is_current, verification_count, toxin_flags, found_at, created_at)
+    (product_group_id, ingredients, is_current, verification_count, toxin_flags, found_at, created_at)
   VALUES 
-    (v_group_id, p_ingredients, p_ingredients_hash, true, 1, p_toxin_flags, NOW(), NOW())
+    (v_group_id, p_ingredients, true, 1, p_toxin_flags, NOW(), NOW())
   RETURNING id INTO v_ingredients_id;
 
   -- Update product group with current ingredients
@@ -330,6 +330,12 @@ BEGIN
   RETURN QUERY SELECT v_group_id, v_ingredients_id;
 END;
 $$;
+
+-- Grant necessary permissions
+GRANT EXECUTE ON FUNCTION public.find_or_create_product_group(text, jsonb) TO anon;
+GRANT EXECUTE ON FUNCTION public.find_or_create_product_group(text, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.find_or_create_product_group(text, jsonb) TO service_role;
+
 
 CREATE OR REPLACE FUNCTION "public"."update_current_ingredients"() RETURNS "trigger"
     LANGUAGE "plpgsql"
