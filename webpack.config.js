@@ -9,7 +9,6 @@ module.exports = {
     background: "./src/background.js",
     content: "./src/content.js",
     popup: "./src/popup/popup.js",
-    options: "./src/options/options.js",
   },
   output: {
     path: path.resolve(__dirname, "dist"),
@@ -50,18 +49,10 @@ module.exports = {
           from: "src/popup/popup.html",
           to: "popup/popup.html",
         },
-        {
-          from: "src/options/options.html",
-          to: "options/options.html",
-        },
         // Copy CSS files to their respective folders
         {
           from: "src/popup/popup.css",
           to: "popup/popup.css",
-        },
-        {
-          from: "src/options/options.css",
-          to: "options/options.css",
         },
         // Copy any other CSS files
         {

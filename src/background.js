@@ -177,8 +177,7 @@ class BackgroundService {
   }
 
   async getPortalLink() {
-    // TODO: Implement actual portal link generation
-    return "https://billing.stripe.com/p/login/test_28o29F7xf4Cr3pC288";
+    return "https://billing.stripe.com/p/login/test_aEU9Cte6P1wSdpK000";
   }
 
   async getCustomIngredients() {

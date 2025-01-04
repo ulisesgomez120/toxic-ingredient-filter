@@ -21,7 +21,6 @@
       "matches": ["*://*.instacart.com/*"]
     }
   ],
-  "options_page": "options/options.html",
   "action": {
     "default_popup": "popup/popup.html"
   },

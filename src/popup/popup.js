@@ -1,4 +1,5 @@
 import authManager from "../auth/authManager";
+import { DEFAULT_TOXIC_INGREDIENTS } from "../../default-ingredients.js";
 
 class PopupManager {
   constructor() {
@@ -61,11 +62,9 @@ class PopupManager {
     this.currentPlan = document.getElementById("current-plan");
     this.planName = document.getElementById("plan-name");
     this.planPrice = document.getElementById("plan-price");
-    this.subscriptionExpiry = document.getElementById("subscription-expiry");
-    this.subscriptionFeatures = document.getElementById("subscription-features");
 
-    // Settings button
-    this.settingsBtn = document.getElementById("settings-btn");
+    // Manage subscription button
+    this.manageSubscriptionBtn = document.getElementById("manage-subscription");
   }
 
   setupAuthStateListener() {
@@ -95,13 +94,8 @@ class PopupManager {
     // Logout
     document.getElementById("logout-btn")?.addEventListener("click", () => this.handleLogout());
 
-    // Subscription button
-    document.querySelector(".tier-btn")?.addEventListener("click", () => this.handleTierSelection("basic"));
-
-    // Settings button
-    this.settingsBtn?.addEventListener("click", () => {
-      chrome.runtime.openOptionsPage();
-    });
+    // Manage subscription button
+    this.manageSubscriptionBtn?.addEventListener("click", () => this.handleManageSubscription());
   }
 
   switchAuthTab(tab) {
@@ -184,34 +178,33 @@ class PopupManager {
     console.log("Handling authenticated state for user:", user.email);
 
     // Ensure elements exist before updating
-    if (!this.loggedOutView || !this.loggedInView || !this.subscriptionSection) {
+    if (!this.loggedOutView || !this.loggedInView) {
       console.error("Required elements not found");
       return;
     }
 
     this.loggedOutView.classList.add("hidden");
     this.loggedInView.classList.remove("hidden");
-    this.subscriptionSection.classList.remove("hidden");
 
     if (user.email && this.userEmail) {
       this.userEmail.textContent = user.email;
     }
 
     await this.updateSubscriptionStatus();
+    this.initializeIngredientsList();
   }
 
   handleUnauthenticatedState() {
     console.log("Handling unauthenticated state");
 
     // Ensure elements exist before updating
-    if (!this.loggedOutView || !this.loggedInView || !this.subscriptionSection) {
+    if (!this.loggedOutView || !this.loggedInView) {
       console.error("Required elements not found");
       return;
     }
 
     this.loggedOutView.classList.remove("hidden");
     this.loggedInView.classList.add("hidden");
-    this.subscriptionSection.classList.add("hidden");
 
     // Reset forms
     this.loginForm?.reset();
@@ -243,43 +236,63 @@ class PopupManager {
     // Update plan badge
     this.planName.textContent = status === "basic" ? "Basic Plan" : "Free Plan";
     this.planPrice.textContent = status === "basic" ? "$1.99/month" : "Free";
-
-    // Update features list
-    this.subscriptionFeatures.innerHTML = this.getFeaturesList(status);
-
-    // Update subscription button
-    const subscribeBtn = document.querySelector(".tier-btn");
-    if (status === "basic") {
-      subscribeBtn.textContent = "Current Plan";
-      subscribeBtn.disabled = true;
-    } else {
-      subscribeBtn.textContent = "Get Started";
-      subscribeBtn.disabled = false;
-    }
   }
 
-  getFeaturesList(status) {
-    const features =
-      status === "basic"
-        ? ["Ingredient scanning", "Default ingredients database", "Basic allergen alerts", "Real-time analysis"]
-        : ["Limited features"];
+  initializeIngredientsList() {
+    // Sort ingredients by concern level
+    const highConcernIngredients = DEFAULT_TOXIC_INGREDIENTS.filter((i) => i.concernLevel === "High");
+    const moderateConcernIngredients = DEFAULT_TOXIC_INGREDIENTS.filter((i) => i.concernLevel === "Moderate");
 
-    return features.map((feature) => `<div>✓ ${feature}</div>`).join("");
+    // Display high concern ingredients
+    const highConcernEl = document.getElementById("high-concern-ingredients");
+    highConcernEl.innerHTML = this.formatIngredientsList(highConcernIngredients);
+
+    // Display moderate concern ingredients
+    const moderateConcernEl = document.getElementById("moderate-concern-ingredients");
+    moderateConcernEl.innerHTML = this.formatIngredientsList(moderateConcernIngredients);
   }
 
-  async handleTierSelection() {
+  formatIngredientsList(ingredients) {
+    return ingredients
+      .map(
+        (ing) => `
+      <div class="ingredient-item">
+        <div class="ingredient-name">${ing.name}</div>
+        <div class="ingredient-details">
+          <div class="health-effects">
+            ${ing.healthEffects
+              .slice(0, 2)
+              .map((effect) => `<span class="effect">${effect}</span>`)
+              .join("")}
+          </div>
+          ${
+            ing.sources[0]
+              ? `
+            <a href="${ing.sources[0].url}" target="_blank" class="source-link">
+              Learn more
+            </a>
+          `
+              : ""
+          }
+        </div>
+      </div>
+    `
+      )
+      .join("");
+  }
+
+  async handleManageSubscription() {
     try {
       const response = await chrome.runtime.sendMessage({
-        type: "GET_PAYMENT_LINK",
-        tier: "basic",
+        type: "GET_PORTAL_LINK",
       });
 
       if (response.url) {
         chrome.tabs.create({ url: response.url });
       }
     } catch (error) {
-      console.error("Error handling subscription:", error);
-      this.showError("Failed to process subscription request.");
+      console.error("Error accessing customer portal:", error);
+      this.showError("Failed to access customer portal. Please try again.");
     }
   }
 
