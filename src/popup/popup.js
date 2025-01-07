@@ -145,6 +145,13 @@ class PopupManager {
     const password = document.getElementById("signup-password").value;
     const errorDiv = this.signupForm.querySelector(".auth-error");
 
+    // Validate password length
+    if (password.length < 8) {
+      errorDiv.textContent = "Password must be at least 8 characters long";
+      errorDiv.classList.remove("hidden");
+      return;
+    }
+
     try {
       document.body.classList.add("loading");
       const { data, error } = await authManager.signUpWithEmail(email, password);
@@ -239,9 +246,14 @@ class PopupManager {
   }
 
   initializeIngredientsList() {
-    // Sort ingredients by concern level
-    const highConcernIngredients = DEFAULT_TOXIC_INGREDIENTS.filter((i) => i.concernLevel === "High");
-    const moderateConcernIngredients = DEFAULT_TOXIC_INGREDIENTS.filter((i) => i.concernLevel === "Moderate");
+    // Sort and filter ingredients by concern level
+    const highConcernIngredients = DEFAULT_TOXIC_INGREDIENTS.filter((i) => i.concernLevel === "High").sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+
+    const moderateConcernIngredients = DEFAULT_TOXIC_INGREDIENTS.filter((i) => i.concernLevel === "Moderate").sort(
+      (a, b) => a.name.localeCompare(b.name)
+    );
 
     // Display high concern ingredients
     const highConcernEl = document.getElementById("high-concern-ingredients");
@@ -259,21 +271,28 @@ class PopupManager {
       <div class="ingredient-item">
         <div class="ingredient-name">${ing.name}</div>
         <div class="ingredient-details">
+          <div>
+            <span class="ingredient-category">${ing.category}</span>
+            ${
+              ing.aliases.length
+                ? `<span class="ingredient-aliases">Also known as: ${ing.aliases.join(", ")}</span>`
+                : ""
+            }
+          </div>
           <div class="health-effects">
-            ${ing.healthEffects
-              .slice(0, 2)
-              .map((effect) => `<span class="effect">${effect}</span>`)
+            ${ing.healthEffects.map((effect) => `<span class="effect">${effect}</span>`).join("")}
+          </div>
+          <div class="source-links">
+            ${ing.sources
+              .map(
+                (source) => `
+                <a href="${source.url}" target="_blank" class="source-link">
+                  ${source.title} (${source.publisher}, ${source.year})
+                </a>
+              `
+              )
               .join("")}
           </div>
-          ${
-            ing.sources[0]
-              ? `
-            <a href="${ing.sources[0].url}" target="_blank" class="source-link">
-              Learn more
-            </a>
-          `
-              : ""
-          }
         </div>
       </div>
     `

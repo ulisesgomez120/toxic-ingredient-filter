@@ -26,36 +26,43 @@ class ProductScanner {
 
   async init() {
     try {
-      // Check auth status first
+      // Set up auth listener first to handle auth state changes
+      this.setupAuthListener();
+
+      // Check auth status and initialize features if authenticated
       await this.checkAuthStatus();
-
-      // Only proceed if authenticated
-      if (!this.isAuthenticated) {
-        console.log("User not authenticated. Extension features disabled.");
-        return;
-      }
-      // Set up mutation observer first to catch any early changes
-      this.setupMutationObserver();
-
-      this.dbHandler = new DatabaseHandler();
-      console.log("Database handler initialized successfully.");
-
-      await this.loadSettings();
-
-      // Process initial page state immediately
-      this.handlePageChanges();
-
-      // Listen for navigation events
-      navigation.addEventListener("navigate", (e) => {
-        // Only trigger if URL actually changed
-        if (this.lastUrl !== e.destination.url) {
-          this.lastUrl = e.destination.url;
-          this.handleNavigation();
-        }
-      });
+      await this.initializeFeatures();
     } catch (error) {
       console.error("Failed to initialize:", error);
     }
+  }
+
+  async initializeFeatures() {
+    // Set up mutation observer to catch any early changes
+    this.setupMutationObserver();
+
+    // Only proceed with feature initialization if authenticated
+    if (!this.isAuthenticated) {
+      console.log("User not authenticated. Extension features disabled.");
+      return;
+    }
+
+    this.dbHandler = new DatabaseHandler();
+    console.log("Database handler initialized successfully.");
+
+    // await this.loadSettings();
+
+    // Process initial page state immediately
+    this.handlePageChanges();
+
+    // Listen for navigation events
+    navigation.addEventListener("navigate", (e) => {
+      // Only trigger if URL actually changed
+      if (this.lastUrl !== e.destination.url) {
+        this.lastUrl = e.destination.url;
+        this.handleNavigation();
+      }
+    });
   }
 
   handleNavigation() {
@@ -126,21 +133,21 @@ class ProductScanner {
     return this.idPrefix ? `${this.idPrefix}-${numericId}` : numericId;
   }
 
-  async loadSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(
-        {
-          strictnessLevel: "moderate",
-          customIngredients: [],
-        },
-        (settings) => {
-          this.strictnessLevel = settings.strictnessLevel;
-          this.overlayManager.updateCustomIngredients(settings.customIngredients);
-          resolve();
-        }
-      );
-    });
-  }
+  // async loadSettings() {
+  //   return new Promise((resolve) => {
+  //     chrome.storage.sync.get(
+  //       {
+  //         strictnessLevel: "moderate",
+  //         customIngredients: [],
+  //       },
+  //       (settings) => {
+  //         this.strictnessLevel = settings.strictnessLevel;
+  //         this.overlayManager.updateCustomIngredients(settings.customIngredients);
+  //         resolve();
+  //       }
+  //     );
+  //   });
+  // }
 
   hasRelevantChanges(mutations) {
     return mutations.some((mutation) => {
@@ -199,7 +206,7 @@ class ProductScanner {
     // Find product container using multiple selectors
     const productPageContainer = this.findProductContainer();
     const hasProcessed = productPageContainer?.hasAttribute("data-processed");
-
+    console.log("pageChanges", productPageContainer, hasProcessed, this.processedItems);
     if (productPageContainer && !hasProcessed && !this.processingPage) {
       let modalElement = productPageContainer.closest(".__reakit-portal");
       if (modalElement) {
@@ -484,6 +491,17 @@ class ProductScanner {
   }
 
   setupAuthListener() {
+    // Connect to background script
+    const port = chrome.runtime.connect({ name: "content-script-connect" });
+
+    // Listen for messages from background script through the port
+    port.onMessage.addListener((message) => {
+      if (message.type === "AUTH_STATE_CHANGED") {
+        this.handleAuthStateChange(message.authState);
+      }
+    });
+
+    // Also listen for broadcast messages
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === "AUTH_STATE_CHANGED") {
         this.handleAuthStateChange(message.authState);
@@ -497,8 +515,13 @@ class ProductScanner {
     this.subscriptionStatus = authState.subscriptionStatus;
 
     if (!wasAuthenticated && this.isAuthenticated) {
-      // User just logged in - initialize everything
-      await this.init();
+      // User just logged in - initialize features
+      await this.initializeFeatures();
+
+      // Reset processing state and trigger a new scan
+      this.processingPage = false;
+      this.processedItems.clear();
+      this.handlePageChanges();
     } else if (wasAuthenticated && !this.isAuthenticated) {
       // User logged out - clean up
       this.cleanup();
@@ -506,9 +529,10 @@ class ProductScanner {
   }
 
   cleanup() {
-    // Remove all overlays
+    // Remove all overlays and processed states
     if (this.overlayManager) {
       document.querySelectorAll(".toxic-badge").forEach((badge) => badge.remove());
+      document.querySelectorAll("[data-processed]").forEach((el) => el.removeAttribute("data-processed"));
     }
 
     // Clear all data

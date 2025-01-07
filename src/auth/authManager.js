@@ -120,6 +120,11 @@ class AuthManager {
   // Sign up with email and password
   async signUpWithEmail(email, password) {
     try {
+      // Validate password length
+      if (password.length < 8) {
+        throw new Error("Password must be at least 8 characters long");
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -164,33 +169,46 @@ class AuthManager {
 
       if (storedSession) {
         console.log("Found stored session, setting auth state");
-        // Set the session in Supabase
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.setSession({
-          access_token: storedSession.access_token,
-          refresh_token: storedSession.refresh_token,
-        });
+        try {
+          // Set the session in Supabase
+          const {
+            data: { session },
+            error,
+          } = await supabase.auth.setSession({
+            access_token: storedSession.access_token,
+            refresh_token: storedSession.refresh_token,
+          });
 
-        if (error) {
-          console.error("Error setting session:", error);
+          if (error) {
+            console.error("Error setting session:", error);
+            throw error;
+          }
+
+          if (session) {
+            console.log("Session restored successfully");
+            this.currentUser = session.user;
+            // Notify subscribers of restored session
+            this.notifySubscribers({ event: "RESTORED_SESSION", session });
+          }
+        } catch (error) {
+          console.error("Failed to restore session:", error);
           await this.clearSession();
           this.currentUser = null;
-        } else if (session) {
-          console.log("Session restored successfully");
-          this.currentUser = session.user;
-          // Notify subscribers of restored session
-          this.notifySubscribers({ event: "RESTORED_SESSION", session });
+          // Notify subscribers of failed session restoration
+          this.notifySubscribers({ event: "SIGNED_OUT", session: null });
         }
       } else {
         console.log("No stored session found");
+        // Ensure subscribers are notified of initial signed out state
+        this.notifySubscribers({ event: "SIGNED_OUT", session: null });
       }
 
       this.initialized = true;
     } catch (error) {
       console.error("Error initializing from storage:", error);
       this.initialized = true; // Still mark as initialized to prevent loops
+      // Ensure subscribers are notified even if initialization fails
+      this.notifySubscribers({ event: "SIGNED_OUT", session: null });
     }
   }
 }

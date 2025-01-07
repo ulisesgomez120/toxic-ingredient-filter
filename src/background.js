@@ -4,6 +4,55 @@ import { supabase } from "./utils/supabaseClient";
 class BackgroundService {
   constructor() {
     this.initialize();
+    this.setupAuthStateListener();
+  }
+
+  setupAuthStateListener() {
+    authManager.subscribeToAuthChanges(async ({ event, session }) => {
+      console.log("Auth state changed in background:", event);
+      const subscriptionStatus = await this.checkSubscriptionStatus();
+
+      // Only notify Instacart tabs
+      const tabs = await chrome.tabs.query({
+        url: ["*://*.instacart.com/*"],
+      });
+
+      // Store current auth state for new content scripts
+      this.currentAuthState = {
+        isAuthenticated: !!session,
+        subscriptionStatus,
+      };
+
+      console.log("Broadcasting auth state change to tabs:", this.currentAuthState);
+
+      // Notify existing tabs
+      for (const tab of tabs) {
+        try {
+          await chrome.tabs.sendMessage(tab.id, {
+            type: "AUTH_STATE_CHANGED",
+            authState: this.currentAuthState,
+          });
+          console.log("Auth state change sent to tab:", tab.id);
+        } catch (error) {
+          console.log("Tab not ready for auth state:", tab.id);
+          // Ignore errors for inactive tabs
+        }
+      }
+
+      // Set up listener for new content scripts
+      if (!this.hasContentScriptListener) {
+        chrome.runtime.onConnect.addListener((port) => {
+          if (port.name === "content-script-connect") {
+            // Send current auth state to new content script
+            port.postMessage({
+              type: "AUTH_STATE_CHANGED",
+              authState: this.currentAuthState,
+            });
+          }
+        });
+        this.hasContentScriptListener = true;
+      }
+    });
   }
 
   async initialize() {
@@ -11,6 +60,16 @@ class BackgroundService {
       // Initialize auth system first
       await authManager.initializeFromStorage();
       console.log("Auth system initialized in background");
+
+      // Get initial auth state
+      const session = await authManager.getSession();
+      const subscriptionStatus = await this.checkSubscriptionStatus();
+
+      // Store initial auth state
+      this.currentAuthState = {
+        isAuthenticated: !!session,
+        subscriptionStatus,
+      };
 
       // Setup message handlers after auth is initialized
       this.setupMessageHandlers();
