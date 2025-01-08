@@ -17,8 +17,6 @@ class AuthManager {
 
   // Handle auth state changes
   async handleAuthStateChange(event, session) {
-    console.log("Auth state changed:", event, session);
-
     if (event === "SIGNED_IN") {
       this.currentUser = session.user;
       await this.persistSession(session);
@@ -57,7 +55,6 @@ class AuthManager {
         "auth.session": session,
         "auth.timestamp": Date.now(),
       });
-      console.log("Session persisted to storage");
     } catch (error) {
       console.error("Error persisting session:", error);
     }
@@ -67,9 +64,8 @@ class AuthManager {
   async clearSession() {
     try {
       await chrome.storage.local.remove(["auth.session", "auth.timestamp"]);
-      console.log("Session cleared from storage");
     } catch (error) {
-      console.error("Error clearing session:", error);
+      // console.error("Error clearing session:", error);
     }
   }
 
@@ -162,13 +158,10 @@ class AuthManager {
   // Initialize auth state from storage
   async initializeFromStorage() {
     try {
-      console.log("Initializing from storage...");
-
       // Get stored session
       const { "auth.session": storedSession } = await chrome.storage.local.get("auth.session");
 
       if (storedSession) {
-        console.log("Found stored session, setting auth state");
         try {
           // Set the session in Supabase
           const {
@@ -185,7 +178,6 @@ class AuthManager {
           }
 
           if (session) {
-            console.log("Session restored successfully");
             this.currentUser = session.user;
             // Notify subscribers of restored session
             this.notifySubscribers({ event: "RESTORED_SESSION", session });
@@ -198,7 +190,6 @@ class AuthManager {
           this.notifySubscribers({ event: "SIGNED_OUT", session: null });
         }
       } else {
-        console.log("No stored session found");
         // Ensure subscribers are notified of initial signed out state
         this.notifySubscribers({ event: "SIGNED_OUT", session: null });
       }

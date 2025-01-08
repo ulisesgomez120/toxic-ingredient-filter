@@ -96,7 +96,6 @@ class DatabaseHandler {
       if (!Array.isArray(externalIds) || externalIds.length === 0) {
         throw new Error("External IDs must be provided as a non-empty array");
       }
-      console.log("externalIds", externalIds);
       // Format array for Supabase's in operator
       const externalIdsQuery = `(${externalIds.map((id) => `"${id}"`).join(",")})`;
 
@@ -105,14 +104,11 @@ class DatabaseHandler {
         externalIdsQuery
       )}`;
 
-      console.log("Fetching ingredients URL:", decodeURIComponent(url));
-
       const response = await fetch(url, {
         headers: this.getHeaders(),
       });
 
       const results = await this.handleResponse(response, "Failed to fetch current product ingredients");
-      console.log("response", results);
 
       // Process and format the results
       const productIngredients = {};
@@ -142,7 +138,7 @@ class DatabaseHandler {
 
       // First try to find existing group by ingredients hash
       const existingGroup = await this.findGroupByIngredientsHash(ingredientsHash);
-      console.log("existingGroup", existingGroup);
+
       if (existingGroup) {
         // Update verification count for existing group
         await fetch(
@@ -358,7 +354,6 @@ class DatabaseHandler {
   }
 
   async handleResponse(response, errorMessage) {
-    console.log("response", response);
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`${errorMessage}:`, errorText);
@@ -378,7 +373,6 @@ class DatabaseHandler {
 
     try {
       const data = await response.json();
-      console.log("data", data);
       return data || {};
     } catch (error) {
       console.error("Error parsing JSON response:", error);

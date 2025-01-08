@@ -43,14 +43,10 @@ class ProductScanner {
 
     // Only proceed with feature initialization if authenticated
     if (!this.isAuthenticated) {
-      console.log("User not authenticated. Extension features disabled.");
       return;
     }
 
     this.dbHandler = new DatabaseHandler();
-    console.log("Database handler initialized successfully.");
-
-    // await this.loadSettings();
 
     // Process initial page state immediately
     this.handlePageChanges();
@@ -206,7 +202,7 @@ class ProductScanner {
     // Find product container using multiple selectors
     const productPageContainer = this.findProductContainer();
     const hasProcessed = productPageContainer?.hasAttribute("data-processed");
-    console.log("pageChanges", productPageContainer, hasProcessed, this.processedItems);
+
     if (productPageContainer && !hasProcessed && !this.processingPage) {
       let modalElement = productPageContainer.closest(".__reakit-portal");
       if (modalElement) {

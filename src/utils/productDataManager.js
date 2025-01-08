@@ -89,7 +89,6 @@ export class ProductDataManager {
     try {
       // Get all external IDs from the chunk
       const externalIds = chunk.map(({ productData }) => productData.external_id);
-      console.log("Processing chunk:", externalIds);
       // Get current ingredients and toxin analysis for all products in chunk
       const productIngredients = await this.dbHandler.getCurrentProductIngredients(externalIds);
 

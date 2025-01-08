@@ -9,7 +9,6 @@ class BackgroundService {
 
   setupAuthStateListener() {
     authManager.subscribeToAuthChanges(async ({ event, session }) => {
-      console.log("Auth state changed in background:", event);
       const subscriptionStatus = await this.checkSubscriptionStatus();
 
       // Only notify Instacart tabs
@@ -23,8 +22,6 @@ class BackgroundService {
         subscriptionStatus,
       };
 
-      console.log("Broadcasting auth state change to tabs:", this.currentAuthState);
-
       // Notify existing tabs
       for (const tab of tabs) {
         try {
@@ -32,9 +29,7 @@ class BackgroundService {
             type: "AUTH_STATE_CHANGED",
             authState: this.currentAuthState,
           });
-          console.log("Auth state change sent to tab:", tab.id);
         } catch (error) {
-          console.log("Tab not ready for auth state:", tab.id);
           // Ignore errors for inactive tabs
         }
       }
@@ -59,7 +54,6 @@ class BackgroundService {
     try {
       // Initialize auth system first
       await authManager.initializeFromStorage();
-      console.log("Auth system initialized in background");
 
       // Get initial auth state
       const session = await authManager.getSession();
@@ -155,7 +149,6 @@ class BackgroundService {
     try {
       const session = await authManager.getSession();
       if (!session) {
-        console.log("No session found in checkSubscriptionStatus");
         return "none"; // No subscription if not authenticated
       }
 
@@ -170,7 +163,6 @@ class BackgroundService {
       }
 
       if (!subscriptionData) {
-        console.log("No subscription found for user:", session.user.email);
         return "none";
       }
 

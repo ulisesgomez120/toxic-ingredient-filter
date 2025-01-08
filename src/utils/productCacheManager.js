@@ -23,7 +23,6 @@ class ProductCacheManager {
 
       request.onsuccess = (event) => {
         this.db = event.target.result;
-        console.log("IndexedDB initialized successfully");
         resolve();
       };
 

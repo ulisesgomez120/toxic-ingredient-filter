@@ -29,7 +29,6 @@ class PopupManager {
 
       // Get current session
       const session = await authManager.getSession();
-      console.log("Initial session check:", session);
 
       if (session?.user) {
         await this.handleAuthenticatedState(session.user);
@@ -69,8 +68,6 @@ class PopupManager {
 
   setupAuthStateListener() {
     authManager.subscribeToAuthChanges(async ({ event, session }) => {
-      console.log("Auth state update in popup:", event, session);
-
       if (event === "SIGNED_IN" || event === "RESTORED_SESSION") {
         if (session?.user) {
           await this.handleAuthenticatedState(session.user);
@@ -182,8 +179,6 @@ class PopupManager {
   }
 
   async handleAuthenticatedState(user) {
-    console.log("Handling authenticated state for user:", user.email);
-
     // Ensure elements exist before updating
     if (!this.loggedOutView || !this.loggedInView) {
       console.error("Required elements not found");
@@ -202,8 +197,6 @@ class PopupManager {
   }
 
   handleUnauthenticatedState() {
-    console.log("Handling unauthenticated state");
-
     // Ensure elements exist before updating
     if (!this.loggedOutView || !this.loggedInView) {
       console.error("Required elements not found");
