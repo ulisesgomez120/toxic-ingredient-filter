@@ -120,21 +120,6 @@ class BackgroundService {
           sendResponse({ url: portalLink });
           break;
 
-        case "GET_CUSTOM_INGREDIENTS":
-          const ingredients = await this.getCustomIngredients();
-          sendResponse({ ingredients });
-          break;
-
-        case "ADD_CUSTOM_INGREDIENT":
-          await this.addCustomIngredient(request.ingredient);
-          sendResponse({ success: true });
-          break;
-
-        case "DELETE_CUSTOM_INGREDIENT":
-          await this.deleteCustomIngredient(request.id);
-          sendResponse({ success: true });
-          break;
-
         default:
           console.warn("Unknown message type:", request.type);
           sendResponse({ error: "Unknown message type" });
@@ -229,19 +214,6 @@ class BackgroundService {
 
   async getPortalLink() {
     return "https://billing.stripe.com/p/login/test_aEU9Cte6P1wSdpK000";
-  }
-
-  async getCustomIngredients() {
-    // Not implemented for MVP (basic tier only)
-    return [];
-  }
-
-  async addCustomIngredient(ingredient) {
-    throw new Error("Custom ingredients not available in basic tier");
-  }
-
-  async deleteCustomIngredient(id) {
-    throw new Error("Custom ingredients not available in basic tier");
   }
 }
 
