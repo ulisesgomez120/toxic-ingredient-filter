@@ -57,7 +57,8 @@ class PopupManager {
     this.authTabs = document.querySelectorAll(".tab-btn");
 
     // Subscription elements
-    this.subscriptionSection = document.getElementById("subscription-section");
+    this.upgradeBanner = document.getElementById("upgrade-banner");
+    this.getStartedBtn = document.getElementById("get-started-btn");
     this.currentPlan = document.getElementById("current-plan");
     this.planName = document.getElementById("plan-name");
     this.planPrice = document.getElementById("plan-price");
@@ -91,8 +92,9 @@ class PopupManager {
     // Logout
     document.getElementById("logout-btn")?.addEventListener("click", () => this.handleLogout());
 
-    // Manage subscription button
+    // Subscription management
     this.manageSubscriptionBtn?.addEventListener("click", () => this.handleManageSubscription());
+    this.getStartedBtn?.addEventListener("click", () => this.handleGetStarted());
   }
 
   switchAuthTab(tab) {
@@ -233,9 +235,38 @@ class PopupManager {
   }
 
   updateSubscriptionUI(status) {
+    const isSubscribed = status === "basic";
+
+    // Show/hide upgrade banner
+    if (this.upgradeBanner) {
+      this.upgradeBanner.classList.toggle("hidden", isSubscribed);
+    }
+
     // Update plan badge
-    this.planName.textContent = status === "basic" ? "Basic Plan" : "Free Plan";
-    this.planPrice.textContent = status === "basic" ? "$1.99/month" : "Free";
+    this.planName.textContent = isSubscribed ? "Basic Plan" : "Free Plan";
+    this.planPrice.textContent = isSubscribed ? "$1.99/month" : "Free";
+
+    // Show/hide manage subscription button
+    if (this.manageSubscriptionBtn) {
+      this.manageSubscriptionBtn.classList.toggle("hidden", !isSubscribed);
+    }
+  }
+
+  async handleGetStarted() {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "GET_PAYMENT_LINK",
+      });
+
+      if (response.url) {
+        chrome.tabs.create({ url: response.url });
+      } else {
+        throw new Error("No payment link received");
+      }
+    } catch (error) {
+      console.error("Error getting payment link:", error);
+      this.showError("Failed to load payment page. Please try again.");
+    }
   }
 
   initializeIngredientsList() {

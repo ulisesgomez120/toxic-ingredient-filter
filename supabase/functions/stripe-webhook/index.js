@@ -175,43 +175,61 @@ async function createSubscriptionFromInvoice(invoice, subscription) {
   }
 
   try {
-    // Check if subscription already exists
-    const { data: existingSub } = await supabaseClient
+    // Get user ID from email first since we need it for both paths
+    const userId = await getUserIdByEmail(invoice.customer_email);
+
+    // Check if user has any existing subscription (active or canceled)
+    const { data: existingUserSub } = await supabaseClient
       .from("user_subscriptions")
-      .select("id")
-      .eq("stripe_subscription_id", subscription.id)
+      .select("id, status, stripe_subscription_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .single();
 
-    if (existingSub) {
+    // If there's an existing subscription with the same Stripe ID, just update it
+    if (existingUserSub?.stripe_subscription_id === subscription.id) {
       console.log(`Subscription ${subscription.id} already exists, updating instead`);
       return await updateSubscriptionStatus(subscription);
     }
 
-    // Get user ID from email
-    const userId = await getUserIdByEmail(invoice.customer_email);
+    // If user had a previous subscription (canceled or otherwise), update it instead of creating new
+    if (existingUserSub) {
+      console.log(`Updating existing subscription for user ${userId}`);
+      const { error: updateError } = await supabaseClient
+        .from("user_subscriptions")
+        .update({
+          stripe_subscription_id: subscription.id,
+          stripe_customer_id: invoice.customer,
+          status: subscription.status,
+          current_period_start: new Date(subscription.current_period_start * 1000),
+          current_period_end: new Date(subscription.current_period_end * 1000),
+          cancel_at_period_end: subscription.cancel_at_period_end,
+          canceled_at: null,
+          updated_at: new Date(),
+        })
+        .eq("id", existingUserSub.id);
 
-    // Debug: Check if we can access the subscription_tiers table at all
-    console.log("Attempting to access subscription_tiers table...");
+      if (updateError) {
+        console.error("Error updating existing subscription:", updateError);
+        throw updateError;
+      }
 
-    // First try a simple count query
-    const { count, error: countError } = await supabaseClient
-      .from("subscription_tiers")
-      .select("*", { count: "exact" });
+      // Log resubscription event
+      await supabaseClient.from("subscription_events").insert({
+        user_subscription_id: existingUserSub.id,
+        event_type: "subscription_reactivated",
+        details: {
+          previous_status: existingUserSub.status,
+          new_stripe_subscription_id: subscription.id,
+        },
+      });
 
-    console.log("Count query result:", { count, error: countError });
+      console.log("Successfully updated existing subscription");
+      return;
+    }
 
-    // Then try to get all tiers
-    console.log("Fetching all subscription tiers...");
-    const { data: allTiers, error: allTiersError } = await supabaseClient.from("subscription_tiers").select("*");
-
-    console.log("All tiers query result:", {
-      success: !allTiersError,
-      tiersFound: allTiers?.length ?? 0,
-      tiers: allTiers,
-      error: allTiersError,
-    });
-
-    // Now try the specific tier lookup
+    // Look up the subscription tier
     console.log(`Looking for subscription tier with stripe_price_id: ${priceId}`);
     const { data: tierData, error: tierError } = await supabaseClient
       .from("subscription_tiers")
@@ -219,7 +237,7 @@ async function createSubscriptionFromInvoice(invoice, subscription) {
       .eq("stripe_price_id", priceId)
       .single();
 
-    console.log("Specific tier query result:", {
+    console.log("Tier lookup result:", {
       success: !tierError,
       tierFound: !!tierData,
       tier: tierData,
