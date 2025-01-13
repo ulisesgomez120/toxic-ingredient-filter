@@ -48,15 +48,27 @@ class AuthManager {
     this.authStateSubscribers.forEach((callback) => callback(authState));
   }
 
-  // Persist session to chrome.storage
+  // Persist session to chrome.storage with expiration
   async persistSession(session) {
     try {
+      if (!session) return;
+
+      // Calculate expiration (30 days from now)
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const sessionData = {
+        ...session,
+        expires_at: expiresAt.toISOString(),
+      };
+
       await chrome.storage.local.set({
-        "auth.session": session,
+        "auth.session": sessionData,
         "auth.timestamp": Date.now(),
       });
     } catch (error) {
       console.error("Error persisting session:", error);
+      throw error; // Propagate error for better handling
     }
   }
 
@@ -155,50 +167,102 @@ class AuthManager {
     return this.currentUser;
   }
 
-  // Initialize auth state from storage
-  async initializeFromStorage() {
+  // Initialize auth state from storage with retry mechanism
+  async initializeFromStorage(retryCount = 0) {
     try {
+      if (retryCount > 3) {
+        throw new Error("Max retry attempts reached");
+      }
+
+      // Wait for chrome APIs to be ready
+      if (typeof chrome === "undefined" || !chrome.storage) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return this.initializeFromStorage(retryCount + 1);
+      }
+
       // Get stored session
       const { "auth.session": storedSession } = await chrome.storage.local.get("auth.session");
 
       if (storedSession) {
         try {
-          // Set the session in Supabase
-          const {
-            data: { session },
-            error,
-          } = await supabase.auth.setSession({
-            access_token: storedSession.access_token,
-            refresh_token: storedSession.refresh_token,
-          });
+          // Check session expiration
+          const sessionExpiry = new Date(storedSession.expires_at).getTime();
+          if (sessionExpiry <= Date.now()) {
+            console.log("Session expired, attempting refresh");
+            const {
+              data: { session },
+              error: refreshError,
+            } = await supabase.auth.refreshSession();
 
-          if (error) {
-            console.error("Error setting session:", error);
-            throw error;
-          }
+            if (refreshError) {
+              console.error("Error refreshing session:", refreshError);
+              throw refreshError;
+            }
 
-          if (session) {
-            this.currentUser = session.user;
-            // Notify subscribers of restored session
-            this.notifySubscribers({ event: "RESTORED_SESSION", session });
+            if (session) {
+              await this.persistSession(session);
+              this.currentUser = session.user;
+              this.notifySubscribers({ event: "RESTORED_SESSION", session });
+            }
+          } else {
+            // Set the valid session in Supabase
+            const {
+              data: { session },
+              error,
+            } = await supabase.auth.setSession({
+              access_token: storedSession.access_token,
+              refresh_token: storedSession.refresh_token,
+            });
+
+            if (error) {
+              // If error is about invalid refresh token, try to refresh
+              if (error.message.includes("Invalid Refresh Token")) {
+                const {
+                  data: { session: refreshedSession },
+                  error: refreshError,
+                } = await supabase.auth.refreshSession();
+
+                if (refreshError) {
+                  throw refreshError;
+                }
+
+                if (refreshedSession) {
+                  await this.persistSession(refreshedSession);
+                  this.currentUser = refreshedSession.user;
+                  this.notifySubscribers({
+                    event: "RESTORED_SESSION",
+                    session: refreshedSession,
+                  });
+                }
+              } else {
+                throw error;
+              }
+            } else if (session) {
+              this.currentUser = session.user;
+              this.notifySubscribers({ event: "RESTORED_SESSION", session });
+            }
           }
         } catch (error) {
           console.error("Failed to restore session:", error);
-          await this.clearSession();
-          this.currentUser = null;
-          // Notify subscribers of failed session restoration
-          this.notifySubscribers({ event: "SIGNED_OUT", session: null });
+          // Only clear session if it's not a temporary error
+          if (!error.message.includes("network") && !error.message.includes("timeout")) {
+            await this.clearSession();
+            this.currentUser = null;
+            this.notifySubscribers({ event: "SIGNED_OUT", session: null });
+          } else {
+            // Retry on network errors
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            return this.initializeFromStorage(retryCount + 1);
+          }
         }
       } else {
-        // Ensure subscribers are notified of initial signed out state
         this.notifySubscribers({ event: "SIGNED_OUT", session: null });
       }
 
       this.initialized = true;
     } catch (error) {
       console.error("Error initializing from storage:", error);
-      this.initialized = true; // Still mark as initialized to prevent loops
-      // Ensure subscribers are notified even if initialization fails
+      this.initialized = true;
       this.notifySubscribers({ event: "SIGNED_OUT", session: null });
     }
   }
