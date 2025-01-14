@@ -4,7 +4,7 @@ const DotenvPlugin = require("dotenv-webpack");
 const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = {
-  mode: "production", // Change to 'production' when building for production
+  mode: "development", // Change to 'production' when building for production
   entry: {
     background: "./src/background.js",
     content: "./src/content.js",

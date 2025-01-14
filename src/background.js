@@ -100,11 +100,6 @@ class BackgroundService {
           sendResponse({ hasAccess });
           break;
 
-        case "OPEN_AUTH":
-          await this.handleAuthFlow(request.mode);
-          sendResponse({ success: true });
-          break;
-
         case "LOGOUT":
           await authManager.signOut();
           sendResponse({ success: true });
@@ -180,30 +175,6 @@ class BackgroundService {
     } catch (error) {
       console.error("Error verifying feature access:", error);
       return false;
-    }
-  }
-
-  async handleAuthFlow(mode) {
-    try {
-      // Open auth page in a popup window
-      const width = 400;
-      const height = 600;
-      const left = (screen.width - width) / 2;
-      const top = (screen.height - height) / 2;
-
-      const authUrl = `https://your-auth-url.com/${mode}`; // Replace with actual auth URL
-
-      chrome.windows.create({
-        url: authUrl,
-        type: "popup",
-        width,
-        height,
-        left,
-        top,
-      });
-    } catch (error) {
-      console.error("Error handling auth flow:", error);
-      throw error;
     }
   }
 
