@@ -7,6 +7,7 @@ export class OverlayManager {
     this.toxicIngredients = new Map(
       DEFAULT_TOXIC_INGREDIENTS.map((ingredient) => [ingredient.name.toLowerCase(), ingredient])
     );
+    console.log("Toxic ingredients loaded:", this.toxicIngredients);
     this.creatingOverlay = false;
   }
 
@@ -33,15 +34,6 @@ export class OverlayManager {
     return concernLevels[highestConcern];
   }
 
-  // Update toxic ingredients with custom ones from settings
-  updateCustomIngredients(customIngredients) {
-    customIngredients.forEach((ingredient) => {
-      if (typeof ingredient === "object" && ingredient.name) {
-        this.toxicIngredients.set(ingredient.name.toLowerCase(), ingredient);
-      }
-    });
-  }
-
   findToxicIngredients(ingredients) {
     if (!ingredients || ingredients.trim() == "") return [];
 
@@ -52,6 +44,7 @@ export class OverlayManager {
       .map((i) => i.trim())
       .filter((i) => i);
     // Find matching toxic ingredients
+    console.log("Finding toxic ingredients in:", ingredientList);
     const found = [];
     for (const ingredient of ingredientList) {
       for (const [toxicName, toxicData] of this.toxicIngredients) {
@@ -67,95 +60,118 @@ export class OverlayManager {
     return found;
   }
 
-  removeExistingOverlays(productElement) {
-    if (!productElement) return;
-
-    // Remove any existing toxic badges within this product element
-    const existingBadges = productElement.querySelectorAll(".toxic-badge");
-    existingBadges.forEach((badge) => {
-      if (badge && badge.parentNode === productElement) {
-        badge.remove();
-      }
-    });
-  }
-
-  createOverlay(productElement, productData) {
-    // Return if already creating an overlay or element is invalid
-    if (this.creatingOverlay || !productElement) return false;
-
-    // Return if element already has an overlay
-    if (productElement.querySelector(".toxic-badge")) return false;
+  updateOrCreateOverlay(productElement, productData) {
+    if (!productElement) return false;
 
     try {
-      this.creatingOverlay = true;
-
       // Make sure the product element has relative positioning
       if (getComputedStyle(productElement).position === "static") {
         productElement.style.position = "relative";
       }
 
-      // Create badge container
-      const badge = document.createElement("div");
-      badge.className = "toxic-badge";
-      badge.setAttribute("data-created", Date.now().toString());
+      let badge = productElement.querySelector(".toxic-badge");
+      const isNewBadge = !badge;
 
-      // Get toxin flags from product group ingredients (null if no ingredient data available)
+      // Create new badge if it doesn't exist
+      if (isNewBadge) {
+        if (this.creatingOverlay) return false;
+        this.creatingOverlay = true;
+        badge = document.createElement("div");
+        badge.className = "toxic-badge";
+      }
+
+      // Get toxin flags and update badge
       const toxinFlags = productData?.toxin_flags || null;
       const severityColor = this.getSeverityColor(toxinFlags);
       badge.style.backgroundColor = severityColor;
-
-      // Add count to badge
       badge.textContent = toxinFlags === null ? "X" : toxinFlags.length;
+      badge.setAttribute("data-created", Date.now().toString());
 
-      // Create tooltip container
-      const tooltip = document.createElement("div");
-      tooltip.className = "toxic-tooltip";
+      // Create or update tooltip
+      let tooltip = badge.querySelector(".toxic-tooltip");
+      if (!tooltip) {
+        tooltip = document.createElement("div");
+        tooltip.className = "toxic-tooltip";
+      } else {
+        tooltip.innerHTML = ""; // Clear existing tooltip content
+      }
 
+      // Update tooltip content
       if (toxinFlags === null) {
-        const header = document.createElement("div");
-        header.className = "toxic-tooltip-header";
-        header.textContent = "No ingredient data available";
-        tooltip.appendChild(header);
+        tooltip.appendChild(this.createTooltipHeader("No ingredient data available"));
       } else if (toxinFlags.length > 0) {
-        const header = document.createElement("div");
-        header.className = "toxic-tooltip-header";
-        header.textContent = `Found ${toxinFlags.length} concerning ingredient${toxinFlags.length > 1 ? "s" : ""}:`;
-        tooltip.appendChild(header);
-
+        tooltip.appendChild(
+          this.createTooltipHeader(
+            `Found ${toxinFlags.length} concerning ingredient${toxinFlags.length > 1 ? "s" : ""}:`
+          )
+        );
         toxinFlags.forEach((ingredient) => {
-          const ingredientDiv = document.createElement("div");
-          ingredientDiv.className = "toxic-ingredient";
-
-          const nameSpan = document.createElement("span");
-          nameSpan.textContent = ingredient.name;
-
-          const concernSpan = document.createElement("span");
-          concernSpan.className = `concern-level ${ingredient.concernLevel.toLowerCase()}`;
-          concernSpan.textContent = ` (${ingredient.concernLevel})`;
-
-          ingredientDiv.appendChild(nameSpan);
-          ingredientDiv.appendChild(concernSpan);
-          tooltip.appendChild(ingredientDiv);
+          tooltip.appendChild(this.createIngredientElement(ingredient));
         });
-      } else if (toxinFlags.length === 0) {
+      } else {
         const noToxinsDiv = document.createElement("div");
         noToxinsDiv.className = "toxic-tooltip-safe";
         noToxinsDiv.textContent = "No concerning ingredients found";
         tooltip.appendChild(noToxinsDiv);
       }
 
-      // Add tooltip to badge
-      badge.appendChild(tooltip);
+      // Add tooltip to badge if it's new
+      if (!badge.contains(tooltip)) {
+        badge.appendChild(tooltip);
+      }
 
-      // Add badge to product element
-      productElement.appendChild(badge);
+      // Add badge to product element if it's new
+      if (isNewBadge) {
+        productElement.appendChild(badge);
+      }
 
       return true;
     } catch (error) {
-      console.error("Error creating overlay:", error);
+      console.error("Error updating/creating overlay:", error);
       return false;
     } finally {
       this.creatingOverlay = false;
     }
+  }
+
+  // Helper method to create tooltip header
+  createTooltipHeader(text) {
+    const header = document.createElement("div");
+    header.className = "toxic-tooltip-header";
+    header.textContent = text;
+    return header;
+  }
+
+  // Helper method to create ingredient element
+  createIngredientElement(ingredient) {
+    const ingredientDiv = document.createElement("div");
+    ingredientDiv.className = "toxic-ingredient";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = ingredient.name;
+
+    const concernSpan = document.createElement("span");
+    concernSpan.className = `concern-level ${ingredient.concernLevel.toLowerCase()}`;
+    concernSpan.textContent = ` (${ingredient.concernLevel})`;
+
+    ingredientDiv.appendChild(nameSpan);
+    ingredientDiv.appendChild(concernSpan);
+    return ingredientDiv;
+  }
+
+  // Kept for backward compatibility, but now just calls updateOrCreateOverlay
+  createOverlay(productElement, productData) {
+    return this.updateOrCreateOverlay(productElement, productData);
+  }
+
+  // Only remove overlays when absolutely necessary
+  removeExistingOverlays(productElement) {
+    if (!productElement) return;
+    const existingBadges = productElement.querySelectorAll(".toxic-badge");
+    existingBadges.forEach((badge) => {
+      if (badge && badge.parentNode === productElement) {
+        badge.remove();
+      }
+    });
   }
 }

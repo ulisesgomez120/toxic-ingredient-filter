@@ -220,18 +220,24 @@ class ProductScanner {
     const hasAccess = await this.verifyFeatureAccess("basic_scan");
     if (!hasAccess) return;
 
-    if (!itemId || this.processedItems.has(itemId) || productElement.querySelector(".toxic-badge")) return;
+    // Skip if already processed recently
+    if (
+      productElement.getAttribute("data-processed-time") &&
+      Date.now() - parseInt(productElement.getAttribute("data-processed-time")) < 1000
+    ) {
+      return;
+    }
+
+    if (!itemId || this.processedItems.has(itemId)) return;
 
     try {
       // Mark as processed immediately to prevent duplicate processing
       this.processedItems.add(itemId);
 
-      // Remove any existing overlays
-      this.overlayManager.removeExistingOverlays(productElement);
-
       const rawProductData = await extractProductFromList(productElement);
       if (!rawProductData) {
-        this.overlayManager.createOverlay(productElement, { toxin_flags: null });
+        this.overlayManager.updateOrCreateOverlay(productElement, { toxin_flags: null });
+        productElement.setAttribute("data-processed-time", Date.now().toString());
         return;
       }
 
@@ -245,10 +251,8 @@ class ProductScanner {
         // Create a promise to handle the overlay creation
         const overlayPromise = new Promise((resolve) => {
           this.dataManager.queueProduct(rawProductData, (productDataWithIngredients) => {
-            if (!productElement.querySelector(".toxic-badge")) {
-              this.overlayManager.createOverlay(productElement, productDataWithIngredients);
-              productElement.setAttribute("data-processed", "true");
-            }
+            this.overlayManager.updateOrCreateOverlay(productElement, productDataWithIngredients);
+            productElement.setAttribute("data-processed-time", Date.now().toString());
             resolve();
           });
         });
@@ -262,12 +266,25 @@ class ProductScanner {
       console.error("Error analyzing product:", error);
       // Remove from processed items if there was an error
       this.processedItems.delete(itemId);
+      // Try to create an error state overlay
+      this.overlayManager.updateOrCreateOverlay(productElement, { toxin_flags: null });
+      productElement.setAttribute("data-processed-time", Date.now().toString());
     }
   }
 
   async processModal(modalElement) {
     try {
       const productId = this.getProductIdFromModal(modalElement);
+      const img = modalElement.querySelector(".e-76rf0");
+
+      // Skip if already processed recently
+      if (
+        img?.getAttribute("data-processed-time") &&
+        Date.now() - parseInt(img.getAttribute("data-processed-time")) < 1000
+      ) {
+        return;
+      }
+
       let listData = productId ? this.productListData.get(productId) : null;
       let cachedProductData = null;
 
@@ -288,14 +305,11 @@ class ProductScanner {
       }
 
       const rawModalData = await extractProductFromSource(modalElement, "modal", listData || cachedProductData);
-      const img = modalElement.querySelector(".e-76rf0");
 
-      if (img && !img.querySelector(".toxic-badge")) {
-        this.overlayManager.removeExistingOverlays(img);
-
+      if (img) {
         if (!rawModalData) {
-          // Create overlay with no data state
-          this.overlayManager.createOverlay(img, { toxin_flags: null });
+          this.overlayManager.updateOrCreateOverlay(img, { toxin_flags: null });
+          img.setAttribute("data-processed-time", Date.now().toString());
           return;
         }
 
@@ -305,16 +319,16 @@ class ProductScanner {
             await this.dbHandler.saveProductListing(formattedData);
 
             const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
-            this.overlayManager.createOverlay(img, { toxin_flags: toxinFlags });
+            this.overlayManager.updateOrCreateOverlay(img, { toxin_flags: toxinFlags });
           } catch (error) {
             console.error("Error saving modal data to database:", error);
-            // Create overlay with error state
-            this.overlayManager.createOverlay(img, { toxin_flags: null });
+            this.overlayManager.updateOrCreateOverlay(img, { toxin_flags: null });
           }
         } else {
-          // Create overlay with no data state if no database handler or ingredients
-          this.overlayManager.createOverlay(img, { toxin_flags: [] });
+          this.overlayManager.updateOrCreateOverlay(img, { toxin_flags: [] });
         }
+
+        img.setAttribute("data-processed-time", Date.now().toString());
       }
 
       if (rawModalData) {
@@ -382,58 +396,48 @@ class ProductScanner {
       return;
     }
 
+    // Skip if already processed recently
+    if (
+      productPageContainer.getAttribute("data-processed-time") &&
+      Date.now() - parseInt(productPageContainer.getAttribute("data-processed-time")) < 1000
+    ) {
+      return;
+    }
+
     this.processingPage = true;
 
     try {
-      this.overlayManager.removeExistingOverlays(productPageContainer);
-
       // Extract product details from the page
       const rawProductData = await extractProductFromSource(document, "product_page");
 
       if (!rawProductData) {
-        // Create overlay with no data state
-        this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
+        this.overlayManager.updateOrCreateOverlay(productPageContainer, { toxin_flags: null });
+        productPageContainer.setAttribute("data-processed-time", Date.now().toString());
         return;
       }
 
       // Process with database if handler is available
       if (this.dbHandler && rawProductData.ingredients) {
         try {
-          // Format the data before saving
           const formattedData = this.formatProductData(rawProductData);
-          // Save the product listing first
           await this.dbHandler.saveProductListing(formattedData);
 
-          // Process ingredients and create overlay
           const toxinFlags = this.overlayManager.findToxicIngredients(rawProductData.ingredients);
-
-          // Create overlay with actual data (only once)
-          if (!productPageContainer.querySelector(".toxic-badge")) {
-            this.overlayManager.createOverlay(productPageContainer, { toxin_flags: toxinFlags || [] });
-          }
+          this.overlayManager.updateOrCreateOverlay(productPageContainer, { toxin_flags: toxinFlags || [] });
         } catch (error) {
           console.error("Error processing product page with database:", error);
-          // Create overlay even if there was an error
-          if (!productPageContainer.querySelector(".toxic-badge")) {
-            this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
-          }
+          this.overlayManager.updateOrCreateOverlay(productPageContainer, { toxin_flags: null });
         }
       } else {
-        // Create overlay with no data state if no database handler or ingredients
-        this.overlayManager.createOverlay(productPageContainer, { toxin_flags: [] });
+        this.overlayManager.updateOrCreateOverlay(productPageContainer, { toxin_flags: [] });
       }
+
+      productPageContainer.setAttribute("data-processed-time", Date.now().toString());
     } catch (error) {
       console.error("Error in processProductPage:", error);
-      // Create overlay with error state
-      if (!productPageContainer.querySelector(".toxic-badge")) {
-        this.overlayManager.createOverlay(productPageContainer, { toxin_flags: null });
-      }
+      this.overlayManager.updateOrCreateOverlay(productPageContainer, { toxin_flags: null });
     } finally {
       this.processingPage = false;
-      // Only set data-processed if we successfully created an overlay
-      if (productPageContainer.querySelector(".toxic-badge")) {
-        productPageContainer.setAttribute("data-processed", "true");
-      }
     }
   }
 
