@@ -26,26 +26,37 @@ class ProductScanner {
 
   async init() {
     try {
+      console.log("Step 0: Content script initializing");
       // Set up auth listener first to handle auth state changes
       this.setupAuthListener();
+      console.log("Step 1: Auth listener set up");
 
       // Check auth status and initialize features if authenticated
       await this.checkAuthStatus();
+      console.log("Step 2: Initial auth status checked:", {
+        isAuthenticated: this.isAuthenticated,
+        subscriptionStatus: this.subscriptionStatus,
+      });
+
       await this.initializeFeatures();
+      console.log("Step 3: Features initialized if authenticated");
     } catch (error) {
       console.error("Failed to initialize:", error);
     }
   }
 
   async initializeFeatures() {
+    console.log("Initializing features...");
     // Set up mutation observer to catch any early changes
     this.setupMutationObserver();
 
     // Only proceed with feature initialization if authenticated
     if (!this.isAuthenticated) {
+      console.log("Skipping feature initialization - not authenticated");
       return;
     }
 
+    console.log("Setting up database handler and initial page scan");
     this.dbHandler = new DatabaseHandler();
 
     // Process initial page state immediately
@@ -59,6 +70,7 @@ class ProductScanner {
         this.handleNavigation();
       }
     });
+    console.log("Feature initialization complete");
   }
 
   handleNavigation() {
@@ -506,21 +518,26 @@ class ProductScanner {
   }
 
   async handleAuthStateChange(authState) {
+    console.log("Step 13: Content script received auth state change", { authState });
     const wasAuthenticated = this.isAuthenticated;
     this.isAuthenticated = authState.isAuthenticated;
     this.subscriptionStatus = authState.subscriptionStatus;
 
-    if (!wasAuthenticated && this.isAuthenticated) {
-      // User just logged in - initialize features
+    if (authState.activateFeatures) {
+      console.log("Step 14: Activating features in content script");
+      // User is authenticated and has active subscription - initialize features
       await this.initializeFeatures();
 
       // Reset processing state and trigger a new scan
       this.processingPage = false;
       this.processedItems.clear();
       this.handlePageChanges();
-    } else if (wasAuthenticated && !this.isAuthenticated) {
-      // User logged out - clean up
+      console.log("Step 15: Features activated and page scan initiated");
+    } else if (wasAuthenticated || (!wasAuthenticated && !authState.activateFeatures)) {
+      console.log("Step 14: Cleaning up features in content script");
+      // User logged out or doesn't have required subscription - clean up
       this.cleanup();
+      console.log("Step 15: Features cleaned up");
     }
   }
 

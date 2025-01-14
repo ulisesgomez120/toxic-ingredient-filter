@@ -122,10 +122,12 @@ class PopupManager {
     const errorDiv = this.loginForm.querySelector(".auth-error");
 
     try {
+      console.log("Step 1: Login initiated in popup.js");
       document.body.classList.add("loading");
       const { data, error } = await authManager.signInWithEmail(email, password);
 
       if (error) throw error;
+      console.log("Step 2: Login successful in popup.js, waiting for auth state change");
 
       // Auth state change will be handled by the listener
     } catch (error) {

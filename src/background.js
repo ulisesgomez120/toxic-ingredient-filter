@@ -3,18 +3,67 @@ import { supabase } from "./utils/supabaseClient";
 
 class BackgroundService {
   constructor() {
-    this.initialize();
-    this.setupAuthStateListener();
+    this.isInitialized = false;
+    this.initializationPromise = this.initialize();
+  }
+
+  async initialize() {
+    if (this.isInitialized) return;
+
+    try {
+      console.log("Background: Starting initialization");
+
+      // Set up auth listener first before any initialization
+      console.log("Background: Setting up auth listener first");
+      this.setupAuthStateListener();
+
+      // Initialize auth system
+      console.log("Background: Initializing auth system");
+      await authManager.initializeFromStorage();
+      console.log("Background: Auth system initialized");
+
+      // Get initial auth state
+      const session = await authManager.getSession();
+      const subscriptionStatus = await this.checkSubscriptionStatus();
+      console.log("Background: Got initial state", {
+        hasSession: !!session,
+        subscriptionStatus,
+        userId: session?.user?.id,
+      });
+
+      // Store initial auth state
+      this.currentAuthState = {
+        isAuthenticated: !!session,
+        subscriptionStatus,
+      };
+
+      // Setup message handlers after auth is initialized
+      this.setupMessageHandlers();
+
+      this.isInitialized = true;
+      console.log("Background: Initialization complete");
+    } catch (error) {
+      console.error("Error initializing background service:", error);
+      throw error; // Propagate error for better handling
+    }
   }
 
   setupAuthStateListener() {
-    authManager.subscribeToAuthChanges(async ({ event, session }) => {
-      const subscriptionStatus = await this.checkSubscriptionStatus();
+    console.log("Background: Setting up auth state listener");
+    authManager.subscribeToAuthChanges(async ({ event, session, subscriptionStatus }) => {
+      console.log("Step 8: Background received auth state change", {
+        event,
+        subscriptionStatus,
+        hasSession: !!session,
+        userId: session?.user?.id,
+        currentAuthState: this.currentAuthState,
+      });
 
       // Only notify Instacart tabs
       const tabs = await chrome.tabs.query({
         url: ["*://*.instacart.com/*"],
       });
+      console.log("Step 10: Found Instacart tabs:", { tabCount: tabs.length });
 
       // Store current auth state for new content scripts
       this.currentAuthState = {
@@ -22,13 +71,24 @@ class BackgroundService {
         subscriptionStatus,
       };
 
+      // Check if we should activate features
+      const shouldActivateFeatures = !!session && subscriptionStatus === "basic";
+      console.log("Step 11: Feature activation decision:", {
+        shouldActivateFeatures,
+        hasSession: !!session,
+        subscriptionStatus,
+        currentAuthState: this.currentAuthState,
+      });
+
       // Notify existing tabs
       for (const tab of tabs) {
         try {
           await chrome.tabs.sendMessage(tab.id, {
             type: "AUTH_STATE_CHANGED",
             authState: this.currentAuthState,
+            activateFeatures: shouldActivateFeatures,
           });
+          console.log("Step 12: Sent auth state to tab:", { tabId: tab.id });
         } catch (error) {
           // Ignore errors for inactive tabs
         }
@@ -42,34 +102,13 @@ class BackgroundService {
             port.postMessage({
               type: "AUTH_STATE_CHANGED",
               authState: this.currentAuthState,
+              activateFeatures: shouldActivateFeatures,
             });
           }
         });
         this.hasContentScriptListener = true;
       }
     });
-  }
-
-  async initialize() {
-    try {
-      // Initialize auth system first
-      await authManager.initializeFromStorage();
-
-      // Get initial auth state
-      const session = await authManager.getSession();
-      const subscriptionStatus = await this.checkSubscriptionStatus();
-
-      // Store initial auth state
-      this.currentAuthState = {
-        isAuthenticated: !!session,
-        subscriptionStatus,
-      };
-
-      // Setup message handlers after auth is initialized
-      this.setupMessageHandlers();
-    } catch (error) {
-      console.error("Error initializing background service:", error);
-    }
   }
 
   setupMessageHandlers() {
@@ -98,11 +137,6 @@ class BackgroundService {
         case "VERIFY_ACCESS":
           const hasAccess = await this.verifyFeatureAccess(request.feature);
           sendResponse({ hasAccess });
-          break;
-
-        case "OPEN_AUTH":
-          await this.handleAuthFlow(request.mode);
-          sendResponse({ success: true });
           break;
 
         case "LOGOUT":
@@ -180,30 +214,6 @@ class BackgroundService {
     } catch (error) {
       console.error("Error verifying feature access:", error);
       return false;
-    }
-  }
-
-  async handleAuthFlow(mode) {
-    try {
-      // Open auth page in a popup window
-      const width = 400;
-      const height = 600;
-      const left = (screen.width - width) / 2;
-      const top = (screen.height - height) / 2;
-
-      const authUrl = `https://your-auth-url.com/${mode}`; // Replace with actual auth URL
-
-      chrome.windows.create({
-        url: authUrl,
-        type: "popup",
-        width,
-        height,
-        left,
-        top,
-      });
-    } catch (error) {
-      console.error("Error handling auth flow:", error);
-      throw error;
     }
   }
 

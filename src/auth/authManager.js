@@ -17,24 +17,109 @@ class AuthManager {
 
   // Handle auth state changes
   async handleAuthStateChange(event, session) {
-    if (event === "SIGNED_IN") {
-      this.currentUser = session.user;
-      await this.persistSession(session);
-    } else if (event === "SIGNED_OUT") {
-      this.currentUser = null;
-      await this.clearSession();
-    }
+    try {
+      console.log("Step 3: Auth state change triggered in authManager.js", { event });
 
-    // Notify subscribers
-    this.notifySubscribers({ event, session });
+      if (event === "SIGNED_IN") {
+        console.log("Step 4: Processing SIGNED_IN event");
+        this.currentUser = session.user;
+        await this.persistSession(session);
+
+        console.log("Step 5: Checking subscription status");
+        // Check subscription status after sign in
+        const { data: subscriptionData, error: subscriptionError } = await supabase.rpc("get_subscription_tier", {
+          user_id: session.user.id,
+        });
+
+        if (subscriptionError) {
+          console.error("Error checking subscription:", subscriptionError);
+        }
+
+        const subscriptionStatus =
+          subscriptionData?.status === "active" && subscriptionData?.tier_name?.toLowerCase() === "basic"
+            ? "basic"
+            : "none";
+
+        console.log("Step 6: Subscription status result:", {
+          subscriptionStatus,
+          subscriptionData,
+          event,
+          hasSession: !!session,
+          userId: session?.user?.id,
+        });
+
+        // Notify subscribers with auth and subscription status
+        this.notifySubscribers({
+          event,
+          session,
+          subscriptionStatus,
+        });
+        console.log("Step 7: Notified subscribers of auth state change with status:", subscriptionStatus);
+      } else if (event === "SIGNED_OUT") {
+        this.currentUser = null;
+        await this.clearSession();
+
+        // Notify subscribers of signed out state with no subscription
+        this.notifySubscribers({
+          event,
+          session: null,
+          subscriptionStatus: "none",
+        });
+      } else {
+        // For other events, just notify with current subscription status
+        const subscriptionStatus = await this.checkSubscriptionStatus();
+        this.notifySubscribers({
+          event,
+          session,
+          subscriptionStatus,
+        });
+      }
+    } catch (error) {
+      console.error("Error in handleAuthStateChange:", error);
+      // Still notify subscribers but with error state
+      this.notifySubscribers({
+        event,
+        session,
+        subscriptionStatus: "none",
+        error: error.message,
+      });
+    }
+  }
+
+  // Check subscription status
+  async checkSubscriptionStatus() {
+    try {
+      if (!this.currentUser) return "none";
+
+      const { data: subscriptionData, error } = await supabase.rpc("get_subscription_tier", {
+        user_id: this.currentUser.id,
+      });
+
+      if (error) {
+        console.error("Error checking subscription:", error);
+        return "none";
+      }
+
+      return subscriptionData?.status === "active" && subscriptionData?.tier_name?.toLowerCase() === "basic"
+        ? "basic"
+        : "none";
+    } catch (error) {
+      console.error("Error in checkSubscriptionStatus:", error);
+      return "none";
+    }
   }
 
   // Subscribe to auth state changes
-  subscribeToAuthChanges(callback) {
+  async subscribeToAuthChanges(callback) {
     this.authStateSubscribers.add(callback);
     // Immediately call with current state if initialized
     if (this.initialized && this.currentUser) {
-      callback({ event: "RESTORED_SESSION", session: { user: this.currentUser } });
+      const subscriptionStatus = await this.checkSubscriptionStatus();
+      callback({
+        event: "RESTORED_SESSION",
+        session: { user: this.currentUser },
+        subscriptionStatus,
+      });
     }
   }
 
@@ -202,7 +287,12 @@ class AuthManager {
             if (session) {
               await this.persistSession(session);
               this.currentUser = session.user;
-              this.notifySubscribers({ event: "RESTORED_SESSION", session });
+              const subscriptionStatus = await this.checkSubscriptionStatus();
+              this.notifySubscribers({
+                event: "RESTORED_SESSION",
+                session,
+                subscriptionStatus,
+              });
             }
           } else {
             // Set the valid session in Supabase
@@ -229,9 +319,11 @@ class AuthManager {
                 if (refreshedSession) {
                   await this.persistSession(refreshedSession);
                   this.currentUser = refreshedSession.user;
+                  const refreshedSubscriptionStatus = await this.checkSubscriptionStatus();
                   this.notifySubscribers({
                     event: "RESTORED_SESSION",
                     session: refreshedSession,
+                    subscriptionStatus: refreshedSubscriptionStatus,
                   });
                 }
               } else {
@@ -239,7 +331,12 @@ class AuthManager {
               }
             } else if (session) {
               this.currentUser = session.user;
-              this.notifySubscribers({ event: "RESTORED_SESSION", session });
+              const currentSubscriptionStatus = await this.checkSubscriptionStatus();
+              this.notifySubscribers({
+                event: "RESTORED_SESSION",
+                session,
+                subscriptionStatus: currentSubscriptionStatus,
+              });
             }
           }
         } catch (error) {
@@ -248,7 +345,11 @@ class AuthManager {
           if (!error.message.includes("network") && !error.message.includes("timeout")) {
             await this.clearSession();
             this.currentUser = null;
-            this.notifySubscribers({ event: "SIGNED_OUT", session: null });
+            this.notifySubscribers({
+              event: "SIGNED_OUT",
+              session: null,
+              subscriptionStatus: "none",
+            });
           } else {
             // Retry on network errors
             await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -256,14 +357,22 @@ class AuthManager {
           }
         }
       } else {
-        this.notifySubscribers({ event: "SIGNED_OUT", session: null });
+        this.notifySubscribers({
+          event: "SIGNED_OUT",
+          session: null,
+          subscriptionStatus: "none",
+        });
       }
 
       this.initialized = true;
     } catch (error) {
       console.error("Error initializing from storage:", error);
       this.initialized = true;
-      this.notifySubscribers({ event: "SIGNED_OUT", session: null });
+      this.notifySubscribers({
+        event: "SIGNED_OUT",
+        session: null,
+        subscriptionStatus: "none",
+      });
     }
   }
 }
