@@ -7,7 +7,6 @@ export class OverlayManager {
     this.toxicIngredients = new Map(
       DEFAULT_TOXIC_INGREDIENTS.map((ingredient) => [ingredient.name.toLowerCase(), ingredient])
     );
-    console.log("Toxic ingredients loaded:", this.toxicIngredients);
     this.creatingOverlay = false;
   }
 
@@ -43,8 +42,7 @@ export class OverlayManager {
       .split(",")
       .map((i) => i.trim())
       .filter((i) => i);
-    // Find matching toxic ingredients
-    console.log("Finding toxic ingredients in:", ingredientList);
+
     const found = [];
     for (const ingredient of ingredientList) {
       for (const [toxicName, toxicData] of this.toxicIngredients) {
@@ -81,7 +79,14 @@ export class OverlayManager {
       }
 
       // Get toxin flags and update badge
-      const toxinFlags = productData?.toxin_flags || null;
+      let toxinFlags;
+      if (productData?.toxin_flags !== undefined && productData.toxin_flags !== null) {
+        toxinFlags = productData.toxin_flags;
+      } else if (productData?.ingredients) {
+        toxinFlags = this.findToxicIngredients(productData.ingredients);
+      } else {
+        toxinFlags = null;
+      }
       const severityColor = this.getSeverityColor(toxinFlags);
       badge.style.backgroundColor = severityColor;
       badge.textContent = toxinFlags === null ? "X" : toxinFlags.length;

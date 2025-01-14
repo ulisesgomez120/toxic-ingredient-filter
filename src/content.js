@@ -187,15 +187,22 @@ class ProductScanner {
     const hasProcessed = productPageContainer?.hasAttribute("data-processed");
 
     if (productPageContainer && !hasProcessed && !this.processingPage) {
-      let modalElement = productPageContainer.closest(".__reakit-portal");
+      // Check if we're in a modal
+      const modalElement = productPageContainer.closest(".__reakit-portal");
+
       if (modalElement) {
-        const ingredientsSection = document.querySelector('div[id$="-Ingredients"]:not([data-processed])');
+        // Check if this modal has already been processed
+        if (modalElement.hasAttribute("data-processed-modal")) {
+          return;
+        }
+
+        // Find ingredients section within this modal only
+        const ingredientsSection = modalElement.querySelector('div[id$="-Ingredients"]:not([data-processed])');
+
         if (ingredientsSection) {
-          const modalElement = ingredientsSection.closest(".__reakit-portal");
-          if (modalElement && !modalElement.querySelector(".toxic-badge")) {
-            this.processModal(modalElement);
-            ingredientsSection.setAttribute("data-processed", "true");
-          }
+          this.processModal(modalElement);
+          ingredientsSection.setAttribute("data-processed", "true");
+          modalElement.setAttribute("data-processed-modal", "true");
         }
       } else {
         this.processProductPage(productPageContainer);
@@ -318,8 +325,7 @@ class ProductScanner {
             const formattedData = this.formatProductData(rawModalData);
             await this.dbHandler.saveProductListing(formattedData);
 
-            const toxinFlags = this.overlayManager.findToxicIngredients(rawModalData.ingredients);
-            this.overlayManager.updateOrCreateOverlay(img, { toxin_flags: toxinFlags });
+            this.overlayManager.updateOrCreateOverlay(img, { ingredients: rawModalData.ingredients });
           } catch (error) {
             console.error("Error saving modal data to database:", error);
             this.overlayManager.updateOrCreateOverlay(img, { toxin_flags: null });
@@ -422,8 +428,7 @@ class ProductScanner {
           const formattedData = this.formatProductData(rawProductData);
           await this.dbHandler.saveProductListing(formattedData);
 
-          const toxinFlags = this.overlayManager.findToxicIngredients(rawProductData.ingredients);
-          this.overlayManager.updateOrCreateOverlay(productPageContainer, { toxin_flags: toxinFlags || [] });
+          this.overlayManager.updateOrCreateOverlay(productPageContainer, { ingredients: rawProductData.ingredients });
         } catch (error) {
           console.error("Error processing product page with database:", error);
           this.overlayManager.updateOrCreateOverlay(productPageContainer, { toxin_flags: null });
@@ -493,7 +498,6 @@ class ProductScanner {
   }
 
   async handleAuthStateChange(authState) {
-    console.log("Auth state changed:", authState);
     const wasAuthenticated = this.isAuthenticated;
     this.isAuthenticated = authState.isAuthenticated;
     this.subscriptionStatus = authState.subscriptionStatus;
