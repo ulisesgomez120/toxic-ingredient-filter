@@ -9,7 +9,6 @@ class ProductScanner {
   constructor() {
     this.overlayManager = new OverlayManager();
     this.dataManager = new ProductDataManager();
-    this.strictnessLevel = "moderate";
     this.dbHandler = null;
     this.productListData = new Map();
     this.idPrefix = null;
@@ -128,22 +127,6 @@ class ProductScanner {
 
     return this.idPrefix ? `${this.idPrefix}-${numericId}` : numericId;
   }
-
-  // async loadSettings() {
-  //   return new Promise((resolve) => {
-  //     chrome.storage.sync.get(
-  //       {
-  //         strictnessLevel: "moderate",
-  //         customIngredients: [],
-  //       },
-  //       (settings) => {
-  //         this.strictnessLevel = settings.strictnessLevel;
-  //         this.overlayManager.updateCustomIngredients(settings.customIngredients);
-  //         resolve();
-  //       }
-  //     );
-  //   });
-  // }
 
   hasRelevantChanges(mutations) {
     return mutations.some((mutation) => {
@@ -506,6 +489,7 @@ class ProductScanner {
   }
 
   async handleAuthStateChange(authState) {
+    console.log("Auth state changed:", authState);
     const wasAuthenticated = this.isAuthenticated;
     this.isAuthenticated = authState.isAuthenticated;
     this.subscriptionStatus = authState.subscriptionStatus;

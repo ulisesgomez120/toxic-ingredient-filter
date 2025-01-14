@@ -228,6 +228,18 @@ class PopupManager {
 
       const { subscriptionStatus } = response;
       this.updateSubscriptionUI(subscriptionStatus);
+
+      // Get current session to notify content scripts of updated auth state
+      const session = await authManager.getSession();
+
+      // Notify content scripts of updated auth state including subscription
+      chrome.runtime.sendMessage({
+        type: "AUTH_STATE_CHANGED",
+        authState: {
+          isAuthenticated: !!session,
+          subscriptionStatus,
+        },
+      });
     } catch (error) {
       console.error("Error checking subscription:", error);
       this.updateSubscriptionUI("none");

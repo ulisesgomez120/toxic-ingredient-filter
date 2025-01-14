@@ -115,6 +115,25 @@ class BackgroundService {
           sendResponse({ url: portalLink });
           break;
 
+        case "AUTH_STATE_CHANGED":
+          // Forward auth state change to all Instacart tabs
+          const tabs = await chrome.tabs.query({
+            url: ["*://*.instacart.com/*"],
+          });
+
+          for (const tab of tabs) {
+            try {
+              await chrome.tabs.sendMessage(tab.id, {
+                type: "AUTH_STATE_CHANGED",
+                authState: request.authState,
+              });
+            } catch (error) {
+              // Ignore errors for inactive tabs
+            }
+          }
+          sendResponse({ success: true });
+          break;
+
         default:
           console.warn("Unknown message type:", request.type);
           sendResponse({ error: "Unknown message type" });
