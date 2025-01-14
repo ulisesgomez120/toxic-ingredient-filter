@@ -32,10 +32,6 @@ class AuthManager {
   // Subscribe to auth state changes
   subscribeToAuthChanges(callback) {
     this.authStateSubscribers.add(callback);
-    // Immediately call with current state if initialized
-    if (this.initialized && this.currentUser) {
-      callback({ event: "RESTORED_SESSION", session: { user: this.currentUser } });
-    }
   }
 
   // Unsubscribe from auth state changes
@@ -202,7 +198,6 @@ class AuthManager {
             if (session) {
               await this.persistSession(session);
               this.currentUser = session.user;
-              this.notifySubscribers({ event: "RESTORED_SESSION", session });
             }
           } else {
             // Set the valid session in Supabase
@@ -229,17 +224,13 @@ class AuthManager {
                 if (refreshedSession) {
                   await this.persistSession(refreshedSession);
                   this.currentUser = refreshedSession.user;
-                  this.notifySubscribers({
-                    event: "RESTORED_SESSION",
-                    session: refreshedSession,
-                  });
+                  // Don't notify for restored sessions
                 }
               } else {
                 throw error;
               }
             } else if (session) {
               this.currentUser = session.user;
-              this.notifySubscribers({ event: "RESTORED_SESSION", session });
             }
           }
         } catch (error) {

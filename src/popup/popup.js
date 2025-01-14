@@ -24,12 +24,10 @@ class PopupManager {
       // Setup auth listener first
       this.setupAuthStateListener();
 
-      // Wait for auth system to initialize
-      await authManager.initializeFromStorage();
-
-      // Get current session
+      // Get current session - this will initialize auth if needed
       const session = await authManager.getSession();
 
+      // Initial state setup based on session
       if (session?.user) {
         await this.handleAuthenticatedState(session.user);
       } else {
@@ -68,8 +66,9 @@ class PopupManager {
   }
 
   setupAuthStateListener() {
+    // Only handle actual sign in/out events, not restored sessions
     authManager.subscribeToAuthChanges(async ({ event, session }) => {
-      if (event === "SIGNED_IN" || event === "RESTORED_SESSION") {
+      if (event === "SIGNED_IN") {
         if (session?.user) {
           await this.handleAuthenticatedState(session.user);
         }
