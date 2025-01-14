@@ -325,7 +325,15 @@ class ProductScanner {
             const formattedData = this.formatProductData(rawModalData);
             await this.dbHandler.saveProductListing(formattedData);
 
+            // Update badge in modal
             this.overlayManager.updateOrCreateOverlay(img, { ingredients: rawModalData.ingredients });
+            // Update badge in product list if it exists
+            if (productId) {
+              const listItem = document.querySelector(`li[data-testid="item_list_item_${productId}"]`);
+              if (listItem) {
+                this.overlayManager.updateOrCreateOverlay(listItem, { ingredients: rawModalData.ingredients });
+              }
+            }
           } catch (error) {
             console.error("Error saving modal data to database:", error);
             this.overlayManager.updateOrCreateOverlay(img, { toxin_flags: null });
