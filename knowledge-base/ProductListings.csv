@@ -1,0 +1,5 @@
+id,retailer_id,external_id,url_path,price_amount,price_unit,image_url,last_seen_at,created_at,updated_at,product_group_id
+2150,10,items_2770-18684299,/products/18684299-capri-sun-fruit-punch-strawberry-kiwi-pacific-cooler-naturally-flavored-juice-drink-blend-variety-pack-6-fl-oz?retailerSlug=ralphs,0.00,,,2025-01-03 03:28:58.242+00,2025-01-03 03:21:30.835+00,2025-01-03 03:28:58.242+00,3991
+2151,10,items_2770-19119452,/products/19119452-kool-aid-jammers-flavored-drink-variety-pack-tropical-punch-grape-cherry-6-fl-oz?retailerSlug=ralphs,0.00,,,2025-01-03 03:27:08.806+00,2025-01-03 03:27:08.806+00,2025-01-03 03:27:08.806+00,3992
+2152,11,items_126135-103084,/products/103084-heinz-tomato-ketchup-20-oz?retailerSlug=ralphs-delivery-now,0.00,,,2025-01-14 17:13:51.224+00,2025-01-14 17:13:51.224+00,2025-01-14 17:13:51.224+00,3993
+2153,11,items_126135-3279285,/products/3279285-klondike-ice-cream-sandwiches-vanilla-6-ct?retailerSlug=ralphs-delivery-now,0.00,,,2025-01-14 17:39:50.923+00,2025-01-14 17:39:50.923+00,2025-01-14 17:39:50.923+00,3994

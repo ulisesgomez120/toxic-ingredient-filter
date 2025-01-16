@@ -29,6 +29,26 @@ function getExternalId(element) {
     return testId.replace("item_list_item_", "");
   }
 
+  // Extract product ID from URL and construct external_id
+  const link = element.querySelector('a[role="button"]');
+  if (link) {
+    const href = link.getAttribute("href");
+    if (href) {
+      const match = href.match(/\/products\/(\d+)-/);
+      if (match) {
+        // Look for an existing item with data-testid to get the retailer ID prefix
+        const itemWithTestId = document.querySelector('li[data-testid^="item_list_item_items_"]');
+        if (itemWithTestId) {
+          const testId = itemWithTestId.getAttribute("data-testid");
+          const prefixMatch = testId.match(/item_list_item_(items_\d+)-/);
+          if (prefixMatch) {
+            return `${prefixMatch[1]}-${match[1]}`;
+          }
+        }
+      }
+    }
+  }
+
   // Fallback: Try to extract ID from the element's ID attribute
   const elementId = element.id;
   if (elementId && elementId.includes("items_")) {
