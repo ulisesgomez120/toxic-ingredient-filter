@@ -12,8 +12,14 @@
   font-weight: bold;
   font-size: 12px;
   cursor: pointer;
-  z-index: 1000;
+  z-index: 2; /* Lower z-index to stay within product card */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Add position relative to product container to create stacking context */
+li[data-testid^="item_list_item_"],
+li:has(a[role="button"][href*="/products/"]) {
+  position: relative;
 }
 
 .toxic-tooltip {
@@ -27,7 +33,7 @@
   padding: 12px;
   min-width: 200px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 1001;
+  z-index: 3; /* Higher than badge but still within product card */
 }
 
 .toxic-badge:hover .toxic-tooltip {

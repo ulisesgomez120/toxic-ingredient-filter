@@ -355,7 +355,18 @@ class ProductScanner {
             this.overlayManager.updateOrCreateOverlay(img, { ingredients: rawModalData.ingredients });
             // Update badge in product list if it exists
             if (productId) {
-              const listItem = document.querySelector(`li[data-testid="item_list_item_${productId}"]`);
+              // Try to find item by data-testid first
+              let listItem = document.querySelector(`li[data-testid="item_list_item_${productId}"]`);
+
+              // If not found, try to find by product URL pattern
+              if (!listItem) {
+                const productIdMatch = productId.match(/items_\d+-(\d+)/);
+                if (productIdMatch) {
+                  const numericId = productIdMatch[1];
+                  listItem = document.querySelector(`li:has(a[role="button"][href*="/products/${numericId}-"])`);
+                }
+              }
+
               if (listItem) {
                 this.overlayManager.updateOrCreateOverlay(listItem, { ingredients: rawModalData.ingredients });
               }
