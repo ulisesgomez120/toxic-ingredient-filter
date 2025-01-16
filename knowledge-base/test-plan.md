@@ -218,3 +218,7 @@
    - Keep previous version ready
    - Document rollback steps
    - Test rollback procedure
+
+---
+
+remember to add disclaimer for dorritos and to verify if something seems fishy. show that instacart cuts off the ingredients.
