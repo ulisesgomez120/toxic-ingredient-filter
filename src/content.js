@@ -28,26 +28,25 @@ class ProductScanner {
       // Set up auth listener first to handle auth state changes
       this.setupAuthListener();
 
-      // Check auth status and initialize features if authenticated
+      // Check auth and subscription status
       await this.checkAuthStatus();
-      await this.initializeFeatures();
+
+      // Only initialize features if we have proper access
+      if (this.isAuthenticated && this.subscriptionStatus === "basic") {
+        await this.initializeFeatures();
+      }
     } catch (error) {
       console.error("Failed to initialize:", error);
     }
   }
 
   async initializeFeatures() {
-    // Set up mutation observer to catch any early changes
-    this.setupMutationObserver();
-
-    // Only proceed with feature initialization if authenticated
-    if (!this.isAuthenticated) {
-      return;
-    }
-
     this.dbHandler = new DatabaseHandler();
 
-    // Process initial page state immediately
+    // Set up mutation observer after confirming auth
+    this.setupMutationObserver();
+
+    // Process initial page state
     this.handlePageChanges();
 
     // Listen for navigation events
@@ -221,11 +220,8 @@ class ProductScanner {
   }
 
   async analyzeProduct(productElement, itemId) {
-    if (!this.isAuthenticated) return;
-
-    // Check feature access before processing
-    const hasAccess = await this.verifyFeatureAccess("basic_scan");
-    if (!hasAccess) return;
+    // Quick local feature check using cached subscription status
+    if (!this.isAuthenticated || this.subscriptionStatus !== "basic") return;
 
     // Skip if already processed recently
     if (
@@ -280,6 +276,9 @@ class ProductScanner {
   }
 
   async processModal(modalElement) {
+    // Quick local feature check using cached subscription status
+    if (!this.isAuthenticated || this.subscriptionStatus !== "basic") return;
+
     try {
       const productId = this.getProductIdFromModal(modalElement);
       const img = modalElement.querySelector(".e-76rf0");
@@ -301,10 +300,13 @@ class ProductScanner {
 
       if (!listData && !cachedProductData && productId) {
         try {
-          const productGroup = await this.dbHandler.findProductGroupByExternalId(productId);
-          if (productGroup) {
-            const ingredients = await this.dbHandler.getProductWithIngredients(productGroup.id);
-            cachedProductData = ingredients ? { ...productGroup, ...ingredients } : null;
+          const productIngredients = await this.dbHandler.getCurrentProductIngredients([productId]);
+          if (productIngredients && productIngredients[productId]) {
+            cachedProductData = {
+              external_id: productId,
+              ingredients: productIngredients[productId].ingredients,
+              toxin_flags: productIngredients[productId].toxin_flags,
+            };
           }
         } catch (error) {
           console.error("Error fetching product from database:", error);
@@ -406,6 +408,9 @@ class ProductScanner {
   }
 
   async processProductPage(productPageContainer) {
+    // Quick local feature check using cached subscription status
+    if (!this.isAuthenticated || this.subscriptionStatus !== "basic") return;
+
     if (this.processingPage) {
       return;
     }
@@ -467,18 +472,13 @@ class ProductScanner {
   }
   async checkAuthStatus() {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: "GET_AUTH_STATUS",
+      // Get auth and subscription status in a single message
+      const { isAuthenticated, subscriptionStatus } = await chrome.runtime.sendMessage({
+        type: "GET_AUTH_STATUS_WITH_SUBSCRIPTION",
       });
 
-      this.isAuthenticated = response.isAuthenticated;
-
-      if (this.isAuthenticated) {
-        const subResponse = await chrome.runtime.sendMessage({
-          type: "CHECK_SUBSCRIPTION",
-        });
-        this.subscriptionStatus = subResponse.subscriptionStatus;
-      }
+      this.isAuthenticated = isAuthenticated;
+      this.subscriptionStatus = subscriptionStatus || "none";
     } catch (error) {
       console.error("Error checking auth status:", error);
       this.isAuthenticated = false;
@@ -544,16 +544,13 @@ class ProductScanner {
     }
   }
 
-  async verifyFeatureAccess(feature) {
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: "VERIFY_ACCESS",
-        feature,
-      });
-      return response.hasAccess;
-    } catch (error) {
-      console.error("Error verifying feature access:", error);
-      return false;
+  verifyFeatureAccess(feature) {
+    // Fast local check using cached subscription status
+    switch (feature) {
+      case "basic_scan":
+        return this.isAuthenticated && this.subscriptionStatus === "basic";
+      default:
+        return false;
     }
   }
 }

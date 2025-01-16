@@ -9,18 +9,20 @@ class BackgroundService {
 
   setupAuthStateListener() {
     authManager.subscribeToAuthChanges(async ({ event, session }) => {
-      const subscriptionStatus = await this.checkSubscriptionStatus();
+      // Only check subscription if authenticated
+      const isAuthenticated = !!session;
+      const subscriptionStatus = isAuthenticated ? await this.checkSubscriptionStatus() : "none";
+
+      // Cache the auth state
+      this.currentAuthState = {
+        isAuthenticated,
+        subscriptionStatus,
+      };
 
       // Only notify Instacart tabs
       const tabs = await chrome.tabs.query({
         url: ["*://*.instacart.com/*"],
       });
-
-      // Store current auth state for new content scripts
-      this.currentAuthState = {
-        isAuthenticated: !!session,
-        subscriptionStatus,
-      };
 
       // Notify existing tabs
       for (const tab of tabs) {
@@ -55,13 +57,14 @@ class BackgroundService {
       // Initialize auth system first
       await authManager.initializeFromStorage();
 
-      // Get initial auth state
+      // Get initial auth state and cache it
       const session = await authManager.getSession();
-      const subscriptionStatus = await this.checkSubscriptionStatus();
+      const isAuthenticated = !!session;
+      const subscriptionStatus = isAuthenticated ? await this.checkSubscriptionStatus() : "none";
 
-      // Store initial auth state
+      // Cache the auth state
       this.currentAuthState = {
-        isAuthenticated: !!session,
+        isAuthenticated,
         subscriptionStatus,
       };
 
@@ -90,9 +93,19 @@ class BackgroundService {
           });
           break;
 
+        case "GET_AUTH_STATUS_WITH_SUBSCRIPTION":
+          const authSession = await authManager.getSession();
+          const isAuthenticated = !!authSession;
+          const subscriptionStatus = isAuthenticated ? await this.checkSubscriptionStatus() : "none";
+          sendResponse({
+            isAuthenticated,
+            subscriptionStatus,
+          });
+          break;
+
         case "CHECK_SUBSCRIPTION":
-          const subscriptionStatus = await this.checkSubscriptionStatus();
-          sendResponse({ subscriptionStatus });
+          const subStatus = await this.checkSubscriptionStatus();
+          sendResponse({ subscriptionStatus: subStatus });
           break;
 
         case "VERIFY_ACCESS":
@@ -151,6 +164,16 @@ class BackgroundService {
         return "none"; // No subscription if not authenticated
       }
 
+      // Use cached subscription status if available and not expired
+      if (
+        this.currentAuthState?.subscriptionStatus === "basic" &&
+        this.subscriptionCheckTimestamp &&
+        Date.now() - this.subscriptionCheckTimestamp < 5 * 60 * 1000
+      ) {
+        // 5 minutes cache
+        return this.currentAuthState.subscriptionStatus;
+      }
+
       // Call the get_subscription_tier RPC function
       const { data: subscriptionData, error } = await supabase.rpc("get_subscription_tier", {
         user_id: session.user.id,
@@ -167,9 +190,13 @@ class BackgroundService {
 
       // For MVP, we only care if they have an active basic subscription
       if (subscriptionData.status === "active" && subscriptionData.tier_name.toLowerCase() === "basic") {
+        // Cache the timestamp of this check
+        this.subscriptionCheckTimestamp = Date.now();
         return "basic";
       }
 
+      // Clear cache timestamp on non-basic status
+      this.subscriptionCheckTimestamp = null;
       return "none";
     } catch (error) {
       console.error("Error in checkSubscriptionStatus:", error);
@@ -182,15 +209,26 @@ class BackgroundService {
       const session = await authManager.getSession();
       if (!session) return false;
 
-      const subscriptionStatus = await this.checkSubscriptionStatus();
-
-      // For MVP, only check basic_scan feature
-      switch (feature) {
-        case "basic_scan":
-          return subscriptionStatus === "basic";
-        default:
-          return false;
+      // Use cached auth state if available
+      if (this.currentAuthState?.isAuthenticated) {
+        // For MVP, only check basic_scan feature
+        switch (feature) {
+          case "basic_scan":
+            // Use cached subscription status if available and not expired
+            if (
+              this.currentAuthState.subscriptionStatus === "basic" &&
+              this.subscriptionCheckTimestamp &&
+              Date.now() - this.subscriptionCheckTimestamp < 5 * 60 * 1000
+            ) {
+              return true;
+            }
+            break;
+        }
       }
+
+      // Fall back to checking subscription status if cache invalid
+      const subscriptionStatus = await this.checkSubscriptionStatus();
+      return feature === "basic_scan" && subscriptionStatus === "basic";
     } catch (error) {
       console.error("Error verifying feature access:", error);
       return false;
