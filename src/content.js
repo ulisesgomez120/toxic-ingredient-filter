@@ -134,12 +134,17 @@ class ProductScanner {
         return Array.from(mutation.addedNodes).some((node) => {
           if (node.nodeType !== Node.ELEMENT_NODE) return false;
 
-          // Check if it's a product list item or ingredients section
+          // Check if it's a product list item (with or without data-testid) or ingredients section
           return (
+            // Direct matches
             node.matches?.('li[data-testid^="item_list_item_"]') ||
             node.matches?.('div[id$="-Ingredients"]') ||
+            // Match product list items by structure (for search pages)
+            node.matches?.('li:has(a[role="button"][href*="/products/"])') ||
+            // Nested matches
             node.querySelector?.('li[data-testid^="item_list_item_"]') ||
-            node.querySelector?.('div[id$="-Ingredients"]')
+            node.querySelector?.('div[id$="-Ingredients"]') ||
+            node.querySelector?.('li:has(a[role="button"][href*="/products/"])')
           );
         });
       }
@@ -210,9 +215,28 @@ class ProductScanner {
     }
 
     // Process list items and modals
-    const productElements = document.querySelectorAll('li[data-testid^="item_list_item_"]:not([data-processed])');
+    const productElements = document.querySelectorAll(`
+      li[data-testid^="item_list_item_"]:not([data-processed]),
+      li:has(a[role="button"][href*="/products/"]):not([data-processed])
+    `);
     productElements.forEach((element) => {
-      const itemId = element.getAttribute("data-testid");
+      // For items with data-testid, use that as the ID
+      let itemId = element.getAttribute("data-testid");
+
+      // For items without data-testid (search pages), construct an ID from the URL
+      if (!itemId) {
+        const link = element.querySelector('a[role="button"]');
+        if (link) {
+          const href = link.getAttribute("href");
+          if (href) {
+            const match = href.match(/\/products\/(\d+)-/);
+            if (match) {
+              itemId = `search_item_${match[1]}`;
+            }
+          }
+        }
+      }
+
       if (itemId && !this.processedItems.has(itemId) && !element.querySelector(".toxic-badge")) {
         this.analyzeProduct(element, itemId);
       }
