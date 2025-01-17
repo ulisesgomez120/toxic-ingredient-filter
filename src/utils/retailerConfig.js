@@ -1,8 +1,8 @@
 // src/utils/retailerConfig.js
+import { supabase } from "./supabaseClient";
+
 class RetailerConfig {
   constructor() {
-    this.supabaseUrl = process.env.SUPABASE_URL;
-    this.supabaseKey = process.env.SUPABASE_KEY;
     this.retailers = new Map(); // Cache for retailer data
     this.retailersByName = new Map(); // Case-insensitive name to ID mapping
     this.currentRetailerId = null; // Store current retailer's ID
@@ -92,15 +92,14 @@ class RetailerConfig {
 
   async loadRetailers() {
     try {
-      const response = await fetch(`${this.supabaseUrl}/rest/v1/retailers?select=id,name,website&is_active=eq.true`, {
-        headers: this.getHeaders(),
-      });
+      const { data: retailers, error } = await supabase
+        .from("retailers")
+        .select("id,name,website")
+        .eq("is_active", true);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch retailers");
+      if (error) {
+        throw error;
       }
-
-      const retailers = await response.json();
 
       // Clear both caches
       this.retailers.clear();
@@ -126,18 +125,16 @@ class RetailerConfig {
         return this.retailers.get(cachedId);
       }
 
-      const response = await fetch(
-        `${this.supabaseUrl}/rest/v1/retailers?name=ilike.${encodeURIComponent(name)}&website=eq.instacart`,
-        {
-          headers: this.getHeaders(),
-        }
-      );
+      const { data: retailers, error } = await supabase
+        .from("retailers")
+        .select("*")
+        .ilike("name", name)
+        .eq("website", "instacart");
 
-      if (!response.ok) {
-        throw new Error("Failed to search for retailer");
+      if (error) {
+        throw error;
       }
 
-      const retailers = await response.json();
       if (retailers && retailers.length > 0) {
         const retailer = retailers[0];
         this.addToCache(retailer);
@@ -166,23 +163,23 @@ class RetailerConfig {
       }
 
       // If not found, create new retailer
-      const response = await fetch(`${this.supabaseUrl}/rest/v1/retailers`, {
-        method: "POST",
-        headers: this.getHeaders("return=representation,resolution=merge-duplicates"),
-        body: JSON.stringify({
-          name: name,
-          website: "instacart",
-          is_active: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }),
-      });
+      const { data: newRetailer, error } = await supabase
+        .from("retailers")
+        .insert([
+          {
+            name: name,
+            website: "instacart",
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single();
 
-      if (!response.ok) {
-        throw new Error("Failed to create retailer");
+      if (error) {
+        throw error;
       }
-
-      const [newRetailer] = await response.json();
 
       // If creation failed or returned no data, try to find existing one last time
       if (!newRetailer || !newRetailer.id) {
@@ -209,34 +206,17 @@ class RetailerConfig {
         return true;
       }
 
-      const response = await fetch(`${this.supabaseUrl}/rest/v1/retailers?id=eq.${retailerId}&select=id`, {
-        headers: this.getHeaders(),
-      });
+      const { data: retailer, error } = await supabase.from("retailers").select("id").eq("id", retailerId).single();
 
-      if (!response.ok) {
-        throw new Error("Failed to verify retailer");
+      if (error) {
+        throw error;
       }
 
-      const retailers = await response.json();
-      return Array.isArray(retailers) && retailers.length > 0;
+      return !!retailer;
     } catch (error) {
       console.error("Error verifying retailer:", error);
       throw error;
     }
-  }
-
-  getHeaders(prefer = null) {
-    const headers = {
-      apikey: this.supabaseKey,
-      Authorization: `Bearer ${this.supabaseKey}`,
-      "Content-Type": "application/json",
-    };
-
-    if (prefer) {
-      headers["Prefer"] = prefer;
-    }
-
-    return headers;
   }
 }
 
