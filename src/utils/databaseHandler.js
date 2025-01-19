@@ -277,6 +277,11 @@ class DatabaseHandler {
         listing_id: listing.id,
       };
     } catch (error) {
+      // If it's a duplicate key error from upsertProductListing, we can ignore it
+      if (error.message?.includes("duplicate key value")) {
+        console.log("Product already exists in database, skipping save");
+        return { success: true };
+      }
       console.error("Error saving product data:", error);
       throw error;
     }
@@ -345,9 +350,39 @@ class DatabaseHandler {
         }),
       });
 
-      const newListing = await this.handleResponse(createResponse, "Failed to create product listing");
-      return Array.isArray(newListing) ? newListing[0] : newListing;
+      try {
+        const newListing = await this.handleResponse(createResponse, "Failed to create product listing");
+        return Array.isArray(newListing) ? newListing[0] : newListing;
+      } catch (error) {
+        // If it's a duplicate key error, try to fetch the existing record
+        if (error.message?.includes("duplicate key value")) {
+          const retryResponse = await fetch(
+            `${
+              this.supabaseUrl
+            }/rest/v1/product_listings?retailer_id=eq.${retailer_id}&external_id=eq.${encodeURIComponent(external_id)}`,
+            {
+              headers: this.getHeaders(),
+            }
+          );
+          const existingListing = await this.handleResponse(retryResponse, "Failed to fetch existing listing");
+          return Array.isArray(existingListing) ? existingListing[0] : existingListing;
+        }
+        throw error;
+      }
     } catch (error) {
+      if (error.message?.includes("duplicate key value")) {
+        console.log("Product listing already exists, returning existing record");
+        const searchResponse = await fetch(
+          `${
+            this.supabaseUrl
+          }/rest/v1/product_listings?retailer_id=eq.${retailer_id}&external_id=eq.${encodeURIComponent(external_id)}`,
+          {
+            headers: this.getHeaders(),
+          }
+        );
+        const existingListing = await this.handleResponse(searchResponse, "Failed to fetch existing listing");
+        return Array.isArray(existingListing) ? existingListing[0] : existingListing;
+      }
       console.error("Error in upsertProductListing:", error);
       throw error;
     }
