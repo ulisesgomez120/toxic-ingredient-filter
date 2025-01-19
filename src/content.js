@@ -195,15 +195,15 @@ class ProductScanner {
       const modalElement = productPageContainer.closest(".__reakit-portal");
 
       if (modalElement) {
-        // Check if this modal has already been processed
-        if (modalElement.hasAttribute("data-processed-modal")) {
-          return;
-        }
-
         // Find ingredients section within this modal only
-        const ingredientsSection = modalElement.querySelector('div[id$="-Ingredients"]:not([data-processed])');
+        const ingredientsSection = modalElement.querySelector('div[id$="-Ingredients"]');
 
         if (ingredientsSection) {
+          // Reset processed states to ensure new product gets processed
+          ingredientsSection.removeAttribute("data-processed");
+          modalElement.removeAttribute("data-processed-modal");
+          productPageContainer.removeAttribute("data-processed");
+
           this.processModal(modalElement);
           ingredientsSection.setAttribute("data-processed", "true");
           modalElement.setAttribute("data-processed-modal", "true");
@@ -247,7 +247,7 @@ class ProductScanner {
     // Quick local feature check using cached subscription status
     if (!this.isAuthenticated || this.subscriptionStatus !== "basic") return;
 
-    // Skip if already processed recently
+    // Skip if already processed recently (using 1000ms window)
     if (
       productElement.getAttribute("data-processed-time") &&
       Date.now() - parseInt(productElement.getAttribute("data-processed-time")) < 1000
@@ -307,12 +307,18 @@ class ProductScanner {
       const productId = this.getProductIdFromModal(modalElement);
       const img = modalElement.querySelector(".e-76rf0");
 
-      // Skip if already processed recently
+      // Skip if already processed recently (using 1000ms window)
       if (
         img?.getAttribute("data-processed-time") &&
         Date.now() - parseInt(img.getAttribute("data-processed-time")) < 1000
       ) {
         return;
+      }
+
+      // Remove existing overlay and processed state for new product
+      if (img) {
+        this.overlayManager.removeExistingOverlays(img);
+        img.removeAttribute("data-processed-time");
       }
 
       let listData = productId ? this.productListData.get(productId) : null;
@@ -349,9 +355,20 @@ class ProductScanner {
         if (this.dbHandler && rawModalData.ingredients) {
           try {
             const formattedData = this.formatProductData(rawModalData);
-            await this.dbHandler.saveProductListing(formattedData);
 
-            // Update badge in modal
+            try {
+              await this.dbHandler.saveProductListing(formattedData);
+            } catch (error) {
+              // If it's a duplicate key error, we can ignore it since the product already exists
+              if (error.message?.includes("duplicate key value")) {
+                console.log("Product already exists in database, skipping save");
+              } else {
+                // For other errors, we should still throw
+                throw error;
+              }
+            }
+
+            // Update badge in modal - do this regardless of save status since we have the data
             this.overlayManager.updateOrCreateOverlay(img, { ingredients: rawModalData.ingredients });
             // Update badge in product list if it exists
             if (productId) {
@@ -450,7 +467,7 @@ class ProductScanner {
       return;
     }
 
-    // Skip if already processed recently
+    // Skip if already processed recently (using 1000ms window)
     if (
       productPageContainer.getAttribute("data-processed-time") &&
       Date.now() - parseInt(productPageContainer.getAttribute("data-processed-time")) < 1000
@@ -474,8 +491,20 @@ class ProductScanner {
       if (this.dbHandler && rawProductData.ingredients) {
         try {
           const formattedData = this.formatProductData(rawProductData);
-          await this.dbHandler.saveProductListing(formattedData);
 
+          try {
+            await this.dbHandler.saveProductListing(formattedData);
+          } catch (error) {
+            // If it's a duplicate key error, we can ignore it since the product already exists
+            if (error.message?.includes("duplicate key value")) {
+              console.log("Product already exists in database, skipping save");
+            } else {
+              // For other errors, we should still throw
+              throw error;
+            }
+          }
+
+          // Update overlay regardless of save status since we have the data
           this.overlayManager.updateOrCreateOverlay(productPageContainer, { ingredients: rawProductData.ingredients });
         } catch (error) {
           console.error("Error processing product page with database:", error);

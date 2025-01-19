@@ -45,11 +45,28 @@ export class OverlayManager {
 
     const found = [];
     for (const ingredient of ingredientList) {
+      // Split ingredient into words, handling various separators
+      const ingredientWords = ingredient
+        .replace(/[\(\)]/g, "") // Remove parentheses
+        .split(/[\s-]+/) // Split on spaces and hyphens
+        .filter((word) => word.length > 0);
+
       for (const [toxicName, toxicData] of this.toxicIngredients) {
-        if (
-          ingredient.includes(toxicName.toLowerCase()) ||
-          toxicData.aliases.some((alias) => ingredient.includes(alias.toLowerCase()))
-        ) {
+        // Convert toxic name to comparable format
+        const toxicWords = toxicName.toLowerCase().split(/[\s-]+/);
+
+        // Check for exact toxic name match (all words must match in sequence)
+        const toxicNameMatch = toxicWords.every((word, index) =>
+          ingredientWords.slice(index).join(" ").startsWith(word)
+        );
+
+        // Check aliases with the same word boundary respect
+        const aliasMatch = toxicData.aliases.some((alias) => {
+          const aliasWords = alias.toLowerCase().split(/[\s-]+/);
+          return aliasWords.every((word, index) => ingredientWords.slice(index).join(" ").startsWith(word));
+        });
+
+        if (toxicNameMatch || aliasMatch) {
           found.push(toxicData);
           break;
         }
