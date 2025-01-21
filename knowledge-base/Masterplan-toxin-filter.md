@@ -189,6 +189,7 @@ A Chrome extension that helps users make healthier food choices on Instacart by 
    - Improved caching strategies
    - Better variant handling
    - Ingredient normalization service
+   - using General - Electronically Supplied Services so stripe said we dont need to collect tax for this.
 
 ### Constraint: Ingredient Data Availability on Instacart
 

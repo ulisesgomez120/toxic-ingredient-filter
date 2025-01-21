@@ -237,11 +237,11 @@ class BackgroundService {
 
   async getPaymentLink(tier = "basic") {
     // For MVP, only return basic tier link
-    return "https://buy.stripe.com/test_4gwcPT5uabyM86Y4gg";
+    return "https://buy.stripe.com/4gwcNj2LJg4k6jebII";
   }
 
   async getPortalLink() {
-    return "https://billing.stripe.com/p/login/test_aEU9Cte6P1wSdpK000";
+    return "https://billing.stripe.com/p/login/28og24gX79YR6yI000";
   }
 }
 

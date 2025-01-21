@@ -3,7 +3,10 @@ Here are the steps you need to take to release your Chrome extension:
 Prepare Production Build
 
 X - Update webpack.config.js mode to "production"
--Create production environment variables file (.env.production) with production Supabase and Stripe credentials
+X - Create production environment variables file (.env.production) with production Supabase and Stripe credentials
+-- updated supabase secrets to use prod stripe secret and webhook secret
+-- updated prod .env supabase local
+-- updated background.js with paylink and portal
 -Run production build: npm run build (this will create optimized files in the dist/ directory)
 
 Create Required Store Assets
