@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Toxin Filter",
+  "name": "Clean Cart",
   "version": "1.0.0",
   "description": "Filter out products with potentially harmful ingredients on Instacart",
   "permissions": ["storage", "activeTab"],
