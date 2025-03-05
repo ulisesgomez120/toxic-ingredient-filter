@@ -7,7 +7,7 @@ X - Create production environment variables file (.env.production) with producti
 -- updated supabase secrets to use prod stripe secret and webhook secret
 -- updated prod .env supabase local
 -- updated background.js with paylink and portal
--Run production build: npm run build (this will create optimized files in the dist/ directory)
+X-Run production build: npm run build (this will create optimized files in the dist/ directory)
 
 Create Required Store Assets
 -Screenshots (1280x800 or 640x400)

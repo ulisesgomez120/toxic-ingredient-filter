@@ -4,6 +4,8 @@
 
 A Chrome extension that helps users make healthier food choices on Instacart by identifying products with potentially harmful ingredients. The extension provides visual feedback through a badge-based system and informative tooltips, making it easy for users to identify and understand concerning ingredients without disrupting their shopping experience.
 
+Description: Automatically scan food products on Instacart for potentially harmful ingredients. This extension analyzes ingredient lists and alerts you to the presence of concerning additives like artificial sweeteners, preservatives, and synthetic colors. Get informed about ingredients linked to health concerns such as aspartame, BHA/BHT, carrageenan, and artificial food colorings. Perfect for health-conscious shoppers who want to make informed decisions about their food purchases.\n\nDISCLAIMER: While we strive for accuracy, some ingredients may be truncated or formatted differently on product pages. Always verify the complete ingredient list on the actual product and consult with healthcare professionals about specific dietary concerns. If our extension shows no toxins for products known to contain artificial ingredients (like some chips or sodas), please double-check the full ingredient list as formatting variations can affect detection.
+
 ### Core Value Proposition
 
 - Simplifies healthy shopping decisions
