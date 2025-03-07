@@ -3,12 +3,15 @@ import { extractProductFromList, extractProductFromSource } from "./utils/produc
 import DatabaseHandler from "./utils/databaseHandler";
 import { OverlayManager } from "./utils/overlayManager";
 import { ProductDataManager } from "./utils/productDataManager";
+import { OnboardingManager } from "./utils/onboardingManager";
 import "./styles/overlay.css";
+import "./styles/onboarding.css";
 
 class ProductScanner {
   constructor() {
     this.overlayManager = new OverlayManager();
     this.dataManager = new ProductDataManager();
+    this.onboardingManager = new OnboardingManager();
     this.dbHandler = null;
     this.productListData = new Map();
     this.idPrefix = null;
@@ -21,6 +24,7 @@ class ProductScanner {
     this.lastUrl = window.location.href;
     this.isAuthenticated = false;
     this.subscriptionStatus = "none";
+    this.hasShownOnboarding = false;
   }
 
   async init() {
@@ -34,9 +38,25 @@ class ProductScanner {
       // Only initialize features if we have proper access
       if (this.isAuthenticated && this.subscriptionStatus === "basic") {
         await this.initializeFeatures();
+
+        // Show onboarding if this is the first time
+        this.showOnboardingIfNeeded();
       }
     } catch (error) {
       console.error("Failed to initialize:", error);
+    }
+  }
+
+  // Show onboarding if it hasn't been shown before
+  async showOnboardingIfNeeded() {
+    if (!this.hasShownOnboarding) {
+      // Wait a bit for the page to fully load before showing onboarding
+      setTimeout(async () => {
+        const shown = await this.onboardingManager.showOnboarding();
+        if (shown) {
+          this.hasShownOnboarding = true;
+        }
+      }, 1500);
     }
   }
 
@@ -582,6 +602,9 @@ class ProductScanner {
       this.processingPage = false;
       this.processedItems.clear();
       this.handlePageChanges();
+
+      // Show onboarding if this is the first time after login
+      this.showOnboardingIfNeeded();
     } else if (wasAuthenticated && !this.isAuthenticated) {
       // User logged out - clean up
       this.cleanup();
