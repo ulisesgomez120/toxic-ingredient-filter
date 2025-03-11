@@ -10,8 +10,11 @@
   --warning-color: #f59e0b;
   --success-color: #10b981;
   --background-color: #f8fafc;
+  --background-secondary: #f1f5f9;
   --text-color: #1e293b;
   --text-light: #64748b;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
   --border-color: #e2e8f0;
   --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --transition-speed: 0.3s;
@@ -242,6 +245,8 @@ button {
   color: var(--text-primary);
   padding: 8px 16px;
   width: 100%;
+  margin-bottom: 8px;
+  border: 1px solid var(--border-color);
 }
 
 .secondary-btn:hover {

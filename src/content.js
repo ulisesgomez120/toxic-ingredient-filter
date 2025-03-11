@@ -585,6 +585,10 @@ class ProductScanner {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === "AUTH_STATE_CHANGED") {
         this.handleAuthStateChange(message.authState);
+      } else if (message.type === "SHOW_ONBOARDING") {
+        // Show onboarding regardless of whether it's been shown before
+        this.onboardingManager.forceShowOnboarding();
+        sendResponse({ success: true });
       }
     });
   }

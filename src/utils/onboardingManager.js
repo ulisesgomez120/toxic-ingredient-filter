@@ -33,6 +33,11 @@ export class OnboardingManager {
       return false;
     }
 
+    return this.forceShowOnboarding();
+  }
+
+  // Show onboarding regardless of whether it's been shown before
+  async forceShowOnboarding() {
     // Create onboarding overlay
     const overlay = document.createElement("div");
     overlay.className = "onboarding-overlay";
@@ -118,7 +123,7 @@ export class OnboardingManager {
       </div>
       
       <div class="onboarding-footer">
-        <a href="https://toxinfilter.com" target="_blank" class="website-link">Visit toxinfilter.com for more information</a>
+        <a href="https://getcleancart.com" target="_blank" class="website-link">Visit getcleancart.com for more information</a>
         <button class="close-button">Got it!</button>
       </div>
     `;

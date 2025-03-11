@@ -94,6 +94,9 @@ class PopupManager {
     // Subscription management
     this.manageSubscriptionBtn?.addEventListener("click", () => this.handleManageSubscription());
     this.getStartedBtn?.addEventListener("click", () => this.handleGetStarted());
+
+    // Show guide/onboarding
+    document.getElementById("show-guide-btn")?.addEventListener("click", () => this.handleShowGuide());
   }
 
   switchAuthTab(tab) {
@@ -347,6 +350,29 @@ class PopupManager {
     } catch (error) {
       console.error("Error accessing customer portal:", error);
       this.showError("Failed to access customer portal. Please try again.");
+    }
+  }
+
+  async handleShowGuide() {
+    try {
+      // Query for Instacart tabs
+      const tabs = await chrome.tabs.query({
+        url: ["*://*.instacart.com/*"],
+      });
+
+      if (tabs.length > 0) {
+        // Send message to the first Instacart tab to show onboarding
+        chrome.tabs.sendMessage(tabs[0].id, { type: "SHOW_ONBOARDING" });
+
+        // Focus on that tab
+        chrome.tabs.update(tabs[0].id, { active: true });
+      } else {
+        // If no Instacart tab is open, show an error
+        this.showError("Please open Instacart to view the guide.");
+      }
+    } catch (error) {
+      console.error("Error showing guide:", error);
+      this.showError("Failed to show guide. Please try again.");
     }
   }
 
