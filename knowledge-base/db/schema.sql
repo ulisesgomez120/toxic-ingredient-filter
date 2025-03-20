@@ -12,7 +12,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
-CREATE EXTENSION IF NOT EXISTS "pgsodium" WITH SCHEMA "pgsodium";
+CREATE EXTENSION IF NOT EXISTS "pgsodium";
 
 
 
@@ -89,6 +89,108 @@ ALTER FUNCTION "public"."check_event_processed"("event_id" "text") OWNER TO "pos
 
 COMMENT ON FUNCTION "public"."check_event_processed"("event_id" "text") IS 'Securely checks if a subscription event has already been processed';
 
+
+
+CREATE OR REPLACE FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_toxin_flags" "jsonb" DEFAULT NULL::"jsonb") RETURNS TABLE("product_group_id" integer, "ingredients_id" integer)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_existing record;
+  v_group_id integer;
+  v_ingredients_id integer;
+BEGIN
+  -- First try to find existing group by ingredients hash
+  -- The hash will be generated automatically by the database
+  SELECT pgi.product_group_id, pgi.id INTO v_existing
+  FROM product_group_ingredients pgi
+  WHERE pgi.ingredients_hash = encode(sha256(p_ingredients::bytea), 'hex')
+  AND pgi.is_current = true;
+  
+  IF FOUND THEN
+    -- Update verification count
+    UPDATE product_group_ingredients
+    SET verification_count = verification_count + 1,
+        found_at = NOW()
+    WHERE id = v_existing.id;
+    
+    RETURN QUERY SELECT v_existing.product_group_id, v_existing.id;
+    RETURN;
+  END IF;
+
+  -- If not found, create new group and ingredients atomically
+  INSERT INTO product_groups DEFAULT VALUES
+  RETURNING id INTO v_group_id;
+
+  -- Create ingredients entry
+  -- ingredients_hash will be generated automatically
+  INSERT INTO product_group_ingredients 
+    (product_group_id, ingredients, is_current, verification_count, toxin_flags, found_at, created_at)
+  VALUES 
+    (v_group_id, p_ingredients, true, 1, p_toxin_flags, NOW(), NOW())
+  RETURNING id INTO v_ingredients_id;
+
+  -- Update product group with current ingredients
+  UPDATE product_groups 
+  SET current_ingredients_id = v_ingredients_id,
+      updated_at = NOW()
+  WHERE id = v_group_id;
+
+  RETURN QUERY SELECT v_group_id, v_ingredients_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_toxin_flags" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_ingredients_hash" "text", "p_toxin_flags" "jsonb" DEFAULT NULL::"jsonb") RETURNS TABLE("product_group_id" integer, "ingredients_id" integer)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_existing record;
+  v_group_id integer;
+  v_ingredients_id integer;
+BEGIN
+  -- First try to find existing group by ingredients hash
+  SELECT pgi.product_group_id, pgi.id INTO v_existing
+  FROM product_group_ingredients pgi
+  WHERE pgi.ingredients_hash = p_ingredients_hash 
+  AND pgi.is_current = true;
+  
+  IF FOUND THEN
+    -- Update verification count
+    UPDATE product_group_ingredients
+    SET verification_count = verification_count + 1,
+        found_at = NOW()
+    WHERE id = v_existing.id;
+    
+    RETURN QUERY SELECT v_existing.product_group_id, v_existing.id;
+    RETURN;
+  END IF;
+
+  -- If not found, create new group and ingredients atomically
+  INSERT INTO product_groups DEFAULT VALUES
+  RETURNING id INTO v_group_id;
+
+  -- Create ingredients entry
+  INSERT INTO product_group_ingredients 
+    (product_group_id, ingredients, ingredients_hash, is_current, verification_count, toxin_flags, found_at, created_at)
+  VALUES 
+    (v_group_id, p_ingredients, p_ingredients_hash, true, 1, p_toxin_flags, NOW(), NOW())
+  RETURNING id INTO v_ingredients_id;
+
+  -- Update product group with current ingredients
+  UPDATE product_groups 
+  SET current_ingredients_id = v_ingredients_id,
+      updated_at = NOW()
+  WHERE id = v_group_id;
+
+  RETURN QUERY SELECT v_group_id, v_ingredients_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_ingredients_hash" "text", "p_toxin_flags" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_subscription_tier"("user_id" "uuid") RETURNS "jsonb"
@@ -278,63 +380,6 @@ $$;
 
 
 ALTER FUNCTION "public"."normalize_text"("input_text" "text") OWNER TO "postgres";
-
-CREATE OR REPLACE FUNCTION public.find_or_create_product_group(
-  p_ingredients text,
-  p_toxin_flags jsonb DEFAULT NULL
-) RETURNS TABLE (
-  product_group_id integer,
-  ingredients_id integer
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  v_existing record;
-  v_group_id integer;
-  v_ingredients_id integer;
-BEGIN
-  -- First try to find existing group by ingredients hash
-  -- The hash will be generated automatically by the database
-  SELECT pgi.product_group_id, pgi.id INTO v_existing
-  FROM product_group_ingredients pgi
-  WHERE pgi.ingredients_hash = encode(sha256(p_ingredients::bytea), 'hex')
-  AND pgi.is_current = true;
-  
-  IF FOUND THEN
-    -- Update verification count
-    UPDATE product_group_ingredients
-    SET verification_count = verification_count + 1,
-        found_at = NOW()
-    WHERE id = v_existing.id;
-    
-    RETURN QUERY SELECT v_existing.product_group_id, v_existing.id;
-    RETURN;
-  END IF;
-
-  -- If not found, create new group and ingredients atomically
-  INSERT INTO product_groups DEFAULT VALUES
-  RETURNING id INTO v_group_id;
-
-  -- Create ingredients entry
-  -- ingredients_hash will be generated automatically
-  INSERT INTO product_group_ingredients 
-    (product_group_id, ingredients, is_current, verification_count, toxin_flags, found_at, created_at)
-  VALUES 
-    (v_group_id, p_ingredients, true, 1, p_toxin_flags, NOW(), NOW())
-  RETURNING id INTO v_ingredients_id;
-
-  -- Update product group with current ingredients
-  UPDATE product_groups 
-  SET current_ingredients_id = v_ingredients_id,
-      updated_at = NOW()
-  WHERE id = v_group_id;
-
-  RETURN QUERY SELECT v_group_id, v_ingredients_id;
-END;
-$$;
-
--- Grant necessary permissions
-GRANT EXECUTE ON FUNCTION public.find_or_create_product_group(text, jsonb) TO anon;
-GRANT EXECUTE ON FUNCTION public.find_or_create_product_group(text, jsonb) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.find_or_create_product_group(text, jsonb) TO service_role;
 
 
 CREATE OR REPLACE FUNCTION "public"."update_current_ingredients"() RETURNS "trigger"
@@ -791,14 +836,19 @@ CREATE INDEX "idx_product_group_ingredients_current" ON "public"."product_group_
 
 
 
-CREATE UNIQUE INDEX "idx_product_group_ingredients_unique_hash" ON "public"."product_group_ingredients" 
-USING "btree" ("ingredients_hash") WHERE ("is_current" = true);
+CREATE INDEX "idx_product_group_ingredients_hash" ON "public"."product_group_ingredients" USING "btree" ("ingredients_hash") WHERE ("is_current" = true);
+
+
 
 CREATE INDEX "idx_product_group_ingredients_toxin_flags" ON "public"."product_group_ingredients" USING "gin" ("toxin_flags");
 
 
 
 CREATE UNIQUE INDEX "idx_product_group_ingredients_unique_current" ON "public"."product_group_ingredients" USING "btree" ("product_group_id", "ingredients_hash") WHERE ("is_current" = true);
+
+
+
+CREATE UNIQUE INDEX "idx_product_group_ingredients_unique_hash" ON "public"."product_group_ingredients" USING "btree" ("ingredients_hash") WHERE ("is_current" = true);
 
 
 
@@ -851,7 +901,7 @@ CREATE OR REPLACE TRIGGER "update_current_ingredients_trigger" AFTER INSERT OR U
 
 
 ALTER TABLE ONLY "public"."product_group_ingredients"
-    ADD CONSTRAINT "product_group_ingredients_product_group_id_fkey" FOREIGN KEY ("product_group_id") REFERENCES "public"."product_groups"("id");
+    ADD CONSTRAINT "product_group_ingredients_product_group_id_fkey" FOREIGN KEY ("product_group_id") REFERENCES "public"."product_groups"("id") ON DELETE CASCADE;
 
 
 
@@ -1132,6 +1182,18 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 GRANT ALL ON FUNCTION "public"."check_event_processed"("event_id" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."check_event_processed"("event_id" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."check_event_processed"("event_id" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_toxin_flags" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_toxin_flags" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_toxin_flags" "jsonb") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_ingredients_hash" "text", "p_toxin_flags" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_ingredients_hash" "text", "p_toxin_flags" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_or_create_product_group"("p_ingredients" "text", "p_ingredients_hash" "text", "p_toxin_flags" "jsonb") TO "service_role";
 
 
 
