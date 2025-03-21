@@ -245,43 +245,27 @@ class DatabaseHandler {
         throw new Error(`Invalid product data: ${validation.errors.join(", ")}`);
       }
 
-      // Step 1: Find or create product group based on ingredients
-      if (!productData.ingredients) {
-        throw new Error("Ingredients are required for product grouping");
-      }
+      // Use the Edge Function to save the product data
+      const edgeFunctionUrl = "https://dlqbsqfcguvilubjlrsq.supabase.co/functions/v1/handle-products";
 
-      const productGroup = await this.findOrCreateProductGroup(productData.ingredients);
-
-      if (!productGroup || !productGroup.id) {
-        throw new Error("Failed to create product group");
-      }
-
-      // Step 2: Create/update product listing
-      const listing = await this.upsertProductListing({
-        product_group_id: productGroup.id,
-        retailer_id: productData.retailer_id,
-        external_id: productData.external_id,
-        url_path: productData.url_path,
-        price_amount: productData.price_amount,
-        price_unit: productData.price_unit,
-        image_url: productData.image_url,
+      const response = await fetch(edgeFunctionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: this.supabaseKey,
+          Authorization: `Bearer ${this.supabaseKey}`,
+        },
+        body: JSON.stringify(productData),
       });
 
-      if (!listing) {
-        throw new Error("Failed to create/update product listing");
+      const result = await this.handleResponse(response, "Failed to save product data via Edge Function");
+
+      if (!result.success) {
+        throw new Error(result.error || "Unknown error saving product data");
       }
 
-      return {
-        success: true,
-        product_group_id: productGroup.id,
-        listing_id: listing.id,
-      };
+      return result;
     } catch (error) {
-      // If it's a duplicate key error from upsertProductListing, we can ignore it
-      if (error.message?.includes("duplicate key value")) {
-        console.log("Product already exists in database, skipping save");
-        return { success: true };
-      }
       console.error("Error saving product data:", error);
       throw error;
     }
