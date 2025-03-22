@@ -187,9 +187,8 @@ class BackgroundService {
       if (!subscriptionData) {
         return "none";
       }
-
-      // For MVP, we only care if they have an active basic subscription
-      if (subscriptionData.status === "active" && subscriptionData.tier_name.toLowerCase() === "basic") {
+      // For MVP, we consider both active and trialing subscriptions as valid
+      if (subscriptionData.status === "active" || subscriptionData.status === "trialing") {
         // Cache the timestamp of this check
         this.subscriptionCheckTimestamp = Date.now();
         return "basic";
@@ -237,7 +236,7 @@ class BackgroundService {
 
   async getPaymentLink(tier = "basic") {
     // For MVP, only return basic tier link
-    return "https://buy.stripe.com/4gwcNj2LJg4k6jebII";
+    return "https://buy.stripe.com/bIY8x31HF3hycHC6op";
   }
 
   async getPortalLink() {

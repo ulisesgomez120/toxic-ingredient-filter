@@ -250,19 +250,26 @@ class PopupManager {
 
   updateSubscriptionUI(status) {
     const isSubscribed = status === "basic";
+    const isTrialing = status === "trialing";
+    const hasValidSubscription = isSubscribed || isTrialing;
 
     // Show/hide upgrade banner
     if (this.upgradeBanner) {
-      this.upgradeBanner.classList.toggle("hidden", isSubscribed);
+      this.upgradeBanner.classList.toggle("hidden", hasValidSubscription);
     }
 
     // Update plan badge
-    this.planName.textContent = isSubscribed ? "Basic Plan" : "Free Plan";
-    this.planPrice.textContent = isSubscribed ? "$1.99/month" : "Free";
+    if (isTrialing) {
+      this.planName.textContent = "Basic Plan (Trial)";
+      this.planPrice.textContent = "Free Trial";
+    } else {
+      this.planName.textContent = isSubscribed ? "Basic Plan" : "Free Plan";
+      this.planPrice.textContent = isSubscribed ? "$3.99/month" : "Free";
+    }
 
     // Show/hide manage subscription button
     if (this.manageSubscriptionBtn) {
-      this.manageSubscriptionBtn.classList.toggle("hidden", !isSubscribed);
+      this.manageSubscriptionBtn.classList.toggle("hidden", !hasValidSubscription);
     }
   }
 

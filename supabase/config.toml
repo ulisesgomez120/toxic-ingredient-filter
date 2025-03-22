@@ -257,6 +257,9 @@ inspector_port = 8083
 [functions.stripe-webhook]
 entrypoint = './functions/stripe-webhook/index.js'
 
+[functions.stripe-webhook-dev]
+entrypoint = './functions/stripe-webhook-dev/index.js'
+
 [functions.handle-products]
 entrypoint = './functions/handle-products/index.js'
 

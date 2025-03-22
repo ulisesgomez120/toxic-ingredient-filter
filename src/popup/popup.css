@@ -79,10 +79,28 @@ body {
 /* Header */
 .popup-header {
   margin-bottom: 2rem;
+  position: relative;
 }
 
 .popup-header p {
   padding-left: 1.6rem;
+}
+
+.contact-link {
+  display: inline-block;
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  position: absolute;
+  top: 0;
+  right: 0;
+  transition: color var(--transition-speed);
+}
+
+.contact-link:hover {
+  text-decoration: underline;
+  color: var(--primary-dark);
 }
 
 .popup-header h1 {

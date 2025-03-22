@@ -60,6 +60,12 @@ module.exports = {
           to: "styles",
           noErrorOnMissing: true,
         },
+        // Copy icons directory
+        {
+          from: "icons",
+          to: "icons",
+          noErrorOnMissing: true,
+        },
       ],
     }),
   ],

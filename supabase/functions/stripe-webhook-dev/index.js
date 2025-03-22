@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@12.0.0";
 
 // Initialize Stripe with the secret key from environment variable
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
+const stripe = new Stripe(Deno.env.get("DEV_STRIPE_SECRET_KEY") ?? "", {
   apiVersion: "2024-11-20.acacia",
   httpClient: Stripe.createFetchHttpClient(),
 });
@@ -18,7 +18,7 @@ console.log("Service Role Key exists:", !!supabaseKey);
 const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 // Webhook signing secret for verification
-const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
+const endpointSecret = Deno.env.get("DEV_STRIPE_WEBHOOK_SECRET") ?? "";
 
 // CORS headers
 const corsHeaders = {

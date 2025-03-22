@@ -36,7 +36,7 @@ class ProductScanner {
       await this.checkAuthStatus();
 
       // Only initialize features if we have proper access
-      if (this.isAuthenticated && this.subscriptionStatus === "basic") {
+      if (this.isAuthenticated && (this.subscriptionStatus === "basic" || this.subscriptionStatus === "trialing")) {
         await this.initializeFeatures();
 
         // Show onboarding if this is the first time
@@ -265,7 +265,8 @@ class ProductScanner {
 
   async analyzeProduct(productElement, itemId) {
     // Quick local feature check using cached subscription status
-    if (!this.isAuthenticated || this.subscriptionStatus !== "basic") return;
+    if (!this.isAuthenticated || (this.subscriptionStatus !== "basic" && this.subscriptionStatus !== "trialing"))
+      return;
 
     // Skip if already processed recently (using 1000ms window)
     if (
@@ -321,7 +322,8 @@ class ProductScanner {
 
   async processModal(modalElement) {
     // Quick local feature check using cached subscription status
-    if (!this.isAuthenticated || this.subscriptionStatus !== "basic") return;
+    if (!this.isAuthenticated || (this.subscriptionStatus !== "basic" && this.subscriptionStatus !== "trialing"))
+      return;
 
     try {
       const productId = this.getProductIdFromModal(modalElement);
@@ -481,7 +483,8 @@ class ProductScanner {
 
   async processProductPage(productPageContainer) {
     // Quick local feature check using cached subscription status
-    if (!this.isAuthenticated || this.subscriptionStatus !== "basic") return;
+    if (!this.isAuthenticated || (this.subscriptionStatus !== "basic" && this.subscriptionStatus !== "trialing"))
+      return;
 
     if (this.processingPage) {
       return;
@@ -639,7 +642,7 @@ class ProductScanner {
     // Fast local check using cached subscription status
     switch (feature) {
       case "basic_scan":
-        return this.isAuthenticated && this.subscriptionStatus === "basic";
+        return this.isAuthenticated && (this.subscriptionStatus === "basic" || this.subscriptionStatus === "trialing");
       default:
         return false;
     }
