@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Clean Cart",
+  "name": "Clean Cart: Ingredient Checker for Instacart",
   "version": "1.0.0",
-  "description": "Filter out products with potentially harmful ingredients on Instacart",
+  "description": "Shop smarter on Instacart! Clean Cart highlights ingredients of concern, saving you time and helping you make healthier choices.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
